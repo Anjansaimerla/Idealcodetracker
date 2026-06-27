@@ -1,0 +1,1703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ideal Code Tracker | Engineering College Dashboard</title>
+  <meta name="description" content="A multi-dashboard tracking platform for engineering colleges analyzing student coding metrics across HackerRank, LeetCode, Codeforces, and GeeksforGeeks.">
+  
+  <!-- FontAwesome Icons for High Fidelity -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Local Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+  <!-- Chart.js for High Fidelity Analytics Charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- Navigation Menu Bar -->
+  <header>
+    <nav class="nav-container" id="main-nav" style="display: none;">
+      <div class="logo">
+        <img src="logo.jpeg" alt="Logo" class="logo-img">
+        <span class="logo-text">Ideal Code Tracker</span>
+      </div>
+      
+      <!-- Floating Navigation Widgets -->
+      <div class="nav-menu-bar" id="nav-widgets">
+        <button class="floating-widget-btn active" id="btn-widget-individual" data-target="panel-individual">
+          <i class="fa-solid fa-user-graduate"></i> Individual
+        </button>
+        <button class="floating-widget-btn" id="btn-widget-team" data-target="panel-team">
+          <i class="fa-solid fa-users-viewfinder"></i> Team
+        </button>
+        <button class="floating-widget-btn" id="btn-widget-compare" data-target="panel-compare">
+          <i class="fa-solid fa-code-compare"></i> Compare
+        </button>
+        <button class="floating-widget-btn" id="btn-widget-analytics" data-target="panel-analytics" style="display: none;">
+          <i class="fa-solid fa-chart-pie"></i> Analytics
+        </button>
+        <button class="floating-widget-btn" id="btn-widget-profile" style="display: none;">
+          <i class="fa-solid fa-circle-user"></i> My Profile
+        </button>
+        <button class="floating-widget-btn" id="btn-widget-download">
+          <i class="fa-solid fa-file-csv"></i> Download CSV
+        </button>
+      </div>
+
+      <!-- Admin Navigation Widgets -->
+      <div class="nav-menu-bar" id="admin-widgets" style="display: none; gap: 0.5rem;">
+        <button class="floating-widget-btn active" id="btn-admin-dashboard" data-panel="admin-panel-dashboard">
+          <i class="fa-solid fa-gauge"></i> Dashboard
+        </button>
+        <button class="floating-widget-btn" id="btn-admin-users" data-panel="admin-panel-users">
+          <i class="fa-solid fa-users"></i> Users
+        </button>
+        <button class="floating-widget-btn" id="btn-admin-analytics" data-panel="admin-panel-analytics">
+          <i class="fa-solid fa-chart-pie"></i> Analytics
+        </button>
+        <button class="floating-widget-btn" id="btn-admin-activity" data-panel="admin-panel-activity">
+          <i class="fa-solid fa-chart-line"></i> Activity
+        </button>
+        <button class="floating-widget-btn" id="btn-admin-audit" data-panel="admin-panel-audit">
+          <i class="fa-solid fa-file-shield"></i> Audit Log
+        </button>
+        <button class="floating-widget-btn" id="btn-admin-notify" data-panel="admin-panel-notify">
+          <i class="fa-solid fa-paper-plane"></i> Notify
+        </button>
+        <button class="floating-widget-btn" id="btn-admin-notices" data-panel="admin-panel-notices">
+          <i class="fa-solid fa-bullhorn"></i> Notices
+        </button>
+        <button class="floating-widget-btn" id="btn-admin-refresh" data-panel="admin-panel-refresh">
+          <i class="fa-solid fa-arrows-rotate"></i> Refresh
+        </button>
+        <button class="floating-widget-btn" id="btn-admin-access" data-panel="admin-panel-access">
+          <i class="fa-solid fa-key"></i> Access
+        </button>
+        <button class="floating-widget-btn" id="btn-admin-assignments" data-panel="admin-panel-assignments">
+          <i class="fa-solid fa-file-signature"></i> Assignments
+        </button>
+        <button class="floating-widget-btn" id="btn-admin-settings" data-panel="admin-panel-settings">
+          <i class="fa-solid fa-sliders"></i> Settings
+        </button>
+      </div>
+
+      <!-- User Role and Logout Badge -->
+      <div class="user-badge" id="nav-user-badge">
+        <span id="nav-user-info"><i class="fa-solid fa-user"></i> Guest</span>
+        <span class="role-indicator role-student" id="nav-user-role">Student</span>
+        <button class="logout-btn" id="btn-nav-edit-profile" title="Edit Profile Links" style="display: none; margin-right: 0.5rem; background: rgba(99, 102, 241, 0.2); color: var(--primary);">
+          <i class="fa-solid fa-user-pen"></i>
+        </button>
+        <button class="logout-btn" id="btn-nav-change-password" title="Change Password" style="display: none; margin-right: 0.5rem; background: rgba(16, 185, 129, 0.2); color: #34d399;">
+          <i class="fa-solid fa-key"></i>
+        </button>
+        <button class="logout-btn" id="btn-logout" title="Log Out">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <!-- Main View Workspace -->
+  <main>
+    
+    <!-- AUTHENTICATION SCREEN: LOGIN & REGISTER -->
+    <section class="view-container active" id="view-auth">
+      <div class="auth-wrapper">
+        <div class="auth-card glass-panel">
+
+          <!-- LOGIN FORM -->
+          <div class="auth-section" id="section-login">
+            <div class="auth-header">
+              <h2 id="login-title">Portal Login</h2>
+              <p>Enter your credentials to access the Code Tracker Dashboard</p>
+            </div>
+            
+            <form id="form-login" novalidate>
+              <div class="form-group">
+                <label for="login-username" id="login-user-label">Username / Roll Number / Gmail</label>
+                <div class="input-with-icon">
+                  <i class="fa-solid fa-user"></i>
+                  <input type="text" id="login-username" required placeholder="e.g. 22BCE1001 or admin@college.edu">
+                </div>
+                <div class="error-msg" id="login-username-error">
+                  <span>❌</span> Username, Roll number, or Gmail is required.
+                </div>
+              </div>
+              
+              <div class="form-group">
+                <label for="login-password">Password</label>
+                <div class="input-with-icon">
+                  <i class="fa-solid fa-lock"></i>
+                  <input type="password" id="login-password" required placeholder="••••••••">
+                </div>
+                <div class="error-msg" id="login-password-error">
+                  <span>❌</span> Password is required.
+                </div>
+              </div>
+
+              <div class="form-group" id="login-batch-year-group">
+                <label for="login-batch-year">Batch Year</label>
+                <select id="login-batch-year" required>
+                  <option value="2026">2026</option>
+                  <option value="2027">2027</option>
+                  <option value="2028">2028</option>
+                  <option value="2029">2029</option>
+                  <option value="2030">2030</option>
+                </select>
+              </div>
+
+              <button type="submit" class="btn-primary">Sign In</button>
+            </form>
+
+            <div class="auth-footer" id="login-footer-text">
+              Students who don't have an account? <a href="#" class="auth-link" id="link-to-register">Sign Up</a>
+              <br><br>
+              <a href="#" class="auth-link" id="link-to-forgot-login">Forgot Password?</a>
+            </div>
+          </div>
+
+          <!-- REGISTER STEP 1: GENERAL INFO -->
+          <div class="auth-section" id="section-register-1" style="display: none;">
+            <div class="auth-header">
+              <h2>Student Registration</h2>
+              <p>Step 1 of 2: Create your dashboard account</p>
+            </div>
+            
+            <form id="form-register-1" novalidate>
+              <div class="form-group">
+                <label for="reg-roll">Roll Number / Registration Number</label>
+                <div class="input-with-icon">
+                  <i class="fa-solid fa-id-card"></i>
+                  <input type="text" id="reg-roll" required placeholder="e.g. 22BCE1001" uppercase>
+                </div>
+                <div class="error-msg" id="reg-roll-error">
+                  <span>❌</span> Enter a valid alphanumeric Roll Number.
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="reg-name">Full Name</label>
+                <div class="input-with-icon">
+                  <i class="fa-solid fa-signature"></i>
+                  <input type="text" id="reg-name" required placeholder="e.g. Aarav Sharma">
+                </div>
+                <div class="error-msg" id="reg-name-error">
+                  <span>❌</span> Full name is required.
+                </div>
+              </div>
+              
+              <div class="form-group">
+                <label for="reg-email">Gmail Address</label>
+                <div class="input-with-icon">
+                  <i class="fa-solid fa-envelope"></i>
+                  <input type="email" id="reg-email" required placeholder="name@gmail.com">
+                </div>
+                <div class="error-msg" id="reg-email-error">
+                  <span>❌</span> Please enter a valid Gmail address (must end with @gmail.com).
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="reg-branch">Academic Branch</label>
+                <select id="reg-branch" required>
+                  <option value="" disabled selected>Select your branch</option>
+                  <option value="CSE">Computer Science & Engineering (CSE)</option>
+                  <option value="CSM">Computer Science - Emerging Tech (CSM)</option>
+                  <option value="AIML">Artificial Intelligence & Machine Learning (AIML)</option>
+                  <option value="MECH">Mechanical Engineering (MECH)</option>
+                  <option value="ECE">Electronics & Communication Engineering (ECE)</option>
+                </select>
+                <div class="error-msg" id="reg-branch-error">
+                  <span>❌</span> Please select a branch.
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="reg-batch-year">Graduation Batch Year</label>
+                <select id="reg-batch-year" required>
+                  <option value="" disabled selected>Select your batch year</option>
+                  <option value="2026">2026</option>
+                  <option value="2027">2027</option>
+                  <option value="2028">2028</option>
+                  <option value="2029">2029</option>
+                  <option value="2030">2030</option>
+                </select>
+                <div class="error-msg" id="reg-batch-year-error">
+                  <span>❌</span> Please select a batch year.
+                </div>
+              </div>
+              
+              <div class="form-group">
+                <label for="reg-password">Set Account Password</label>
+                <div class="input-with-icon">
+                  <i class="fa-solid fa-lock"></i>
+                  <input type="password" id="reg-password" required minlength="6" placeholder="At least 6 characters">
+                </div>
+                <div class="error-msg" id="reg-password-error">
+                  <span>❌</span> Password must be at least 6 characters.
+                </div>
+              </div>
+
+              <button type="submit" class="btn-primary">Next: Coding Accounts <i class="fa-solid fa-arrow-right"></i></button>
+            </form>
+
+            <div class="auth-footer">
+              Already registered? <a href="#" class="auth-link" id="link-to-login-1">Sign In</a>
+              <br><br>
+              <a href="#" class="auth-link" id="link-to-forgot-reg">Forgot Password?</a>
+            </div>
+          </div>
+
+          <!-- REGISTER STEP 2: PROFILE LINKS -->
+          <div class="auth-section" id="section-register-2" style="display: none;">
+            <div class="auth-header">
+              <h2>Coding Accounts</h2>
+              <p>Step 2 of 2: Connect your platform URLs</p>
+            </div>
+            
+            <form id="form-register-2" novalidate>
+              
+              <div class="form-group">
+                <label for="reg-leetcode">LeetCode Profile URL</label>
+                <div class="input-with-icon">
+                  <i class="fa-solid fa-code" style="color: #ffa116;"></i>
+                  <input type="url" id="reg-leetcode" placeholder="https://leetcode.com/u/username/">
+                </div>
+                <div class="error-msg" id="reg-leetcode-error">
+                  <span>❌</span> Must be a valid LeetCode profile URL (leetcode.com/username).
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="reg-hackerrank">HackerRank Profile URL</label>
+                <div class="input-with-icon">
+                  <i class="fa-solid fa-laptop-code" style="color: #2ec866;"></i>
+                  <input type="url" id="reg-hackerrank" placeholder="https://www.hackerrank.com/username">
+                </div>
+                <div class="error-msg" id="reg-hackerrank-error">
+                  <span>❌</span> Must be a valid HackerRank profile URL (hackerrank.com/profile/username).
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="reg-codeforces">Codeforces Profile URL</label>
+                <div class="input-with-icon">
+                  <i class="fa-solid fa-chart-line" style="color: #3b5998;"></i>
+                  <input type="url" id="reg-codeforces" placeholder="https://codeforces.com/profile/username">
+                </div>
+                <div class="error-msg" id="reg-codeforces-error">
+                  <span>❌</span> Must be a valid Codeforces profile URL (codeforces.com/profile/username).
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="reg-gfg">GeeksforGeeks Profile URL</label>
+                <div class="input-with-icon">
+                  <i class="fa-solid fa-terminal" style="color: #2f8955;"></i>
+                  <input type="url" id="reg-gfg" placeholder="https://www.geeksforgeeks.org/profile/username/">
+                </div>
+                <div class="error-msg" id="reg-gfg-error">
+                  <span>❌</span> Must be a valid GeeksforGeeks profile URL (geeksforgeeks.org/profile/username).
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="reg-codechef">CodeChef Profile URL</label>
+                <div class="input-with-icon">
+                  <i class="fa-solid fa-cookie-bite" style="color: #ab7a5f;"></i>
+                  <input type="url" id="reg-codechef" placeholder="https://www.codechef.com/users/username">
+                </div>
+                <div class="error-msg" id="reg-codechef-error">
+                  <span>❌</span> Must be a valid CodeChef profile URL (codechef.com/users/username).
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="reg-github">GitHub Profile URL</label>
+                <div class="input-with-icon">
+                  <i class="fa-brands fa-github" style="color: #f0f6fc;"></i>
+                  <input type="url" id="reg-github" placeholder="https://github.com/username">
+                </div>
+                <div class="error-msg" id="reg-github-error">
+                  <span>❌</span> Must be a valid GitHub profile URL (github.com/username).
+                </div>
+              </div>
+
+              <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                <button type="button" class="btn-primary" id="btn-back-reg-1" style="background: rgba(255,255,255,0.05); color: var(--text-primary); border: 1px solid var(--border-color); box-shadow: none;">
+                  <i class="fa-solid fa-arrow-left"></i> Back
+                </button>
+                <button type="submit" class="btn-primary" style="flex: 2;">Finish & Crawl <i class="fa-solid fa-cloud-arrow-down"></i></button>
+              </div>
+            </form>
+          </div>
+
+          <!-- FORGOT PASSWORD -->
+          <div class="auth-section" id="section-forgot" style="display: none;">
+            <div class="auth-header">
+              <h2>Recover Password</h2>
+              <p>Enter your username to retrieve your password via email</p>
+            </div>
+            
+            <form id="form-forgot" novalidate>
+              <div class="form-group">
+                <label for="forgot-username">Username / Roll Number / Gmail</label>
+                <div class="input-with-icon">
+                  <i class="fa-solid fa-user"></i>
+                  <input type="text" id="forgot-username" required placeholder="e.g. 236K1A0546 or admin@college.edu">
+                </div>
+                <div class="error-msg" id="forgot-username-error">
+                  <span>❌</span> Username is required.
+                </div>
+              </div>
+              
+              <button type="submit" class="btn-primary">Recover Password</button>
+            </form>
+
+            <div class="auth-footer">
+              Remembered your password? <a href="#" class="auth-link" id="link-to-login-forgot">Sign In</a>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- CORE ANALYTICS VIEW: FOR PRINCIPAL & HOD -->
+    <section class="view-container" id="view-dashboard">
+      
+      <!-- Summary Stats Grid -->
+      <div class="dashboard-grid">
+        <div class="stat-card glass-panel">
+          <div class="stat-icon blue"><i class="fa-solid fa-graduation-cap"></i></div>
+          <div class="stat-info">
+            <h3>Registered Students</h3>
+            <div class="stat-value" id="stat-total-students">0</div>
+          </div>
+        </div>
+        <div class="stat-card glass-panel">
+          <div class="stat-icon green"><i class="fa-solid fa-trophy"></i></div>
+          <div class="stat-info">
+            <h3>Highest Score</h3>
+            <div class="stat-value" id="stat-highest-score">0</div>
+          </div>
+        </div>
+        <div class="stat-card glass-panel">
+          <div class="stat-icon amber"><i class="fa-solid fa-chart-bar"></i></div>
+          <div class="stat-info">
+            <h3>College Average</h3>
+            <div class="stat-value" id="stat-college-avg">0</div>
+          </div>
+        </div>
+        <div class="stat-card glass-panel">
+          <div class="stat-icon purple"><i class="fa-solid fa-award"></i></div>
+          <div class="stat-info">
+            <h3>Leaderboard Peak</h3>
+            <div class="stat-value" id="stat-peak-student">-</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 1. INDIVIDUAL FLOATING WIDGET PANEL -->
+      <div class="widget-panel active" id="panel-individual">
+        <div class="panel-header">
+          <h2><i class="fa-solid fa-user-graduate"></i> Student Directory & Platform Standings</h2>
+          <div class="panel-controls">
+            <div class="search-input-group">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input type="text" id="search-students" placeholder="Search roll, name, profile...">
+            </div>
+            <!-- Branch Filter (Disabled or hidden for HOD to enforce security rules) -->
+            <select class="filter-select" id="filter-branch">
+              <option value="ALL">All Branches</option>
+              <option value="CSE">CSE</option>
+              <option value="CSM">CSM</option>
+              <option value="AIML">AIML</option>
+              <option value="MECH">MECH</option>
+              <option value="ECE">ECE</option>
+            </select>
+            <select class="filter-select" id="filter-platform">
+              <option value="ALL">All Platforms</option>
+              <option value="leetcode">LeetCode Solved</option>
+              <option value="hackerrank">HackerRank Score</option>
+              <option value="codeforces">Codeforces Rating</option>
+              <option value="gfg">GFG Solved</option>
+              <option value="codechef">CodeChef Solved</option>
+              <option value="github">GitHub Repos</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Hovering Horizontal Batch Widget for Body 1 -->
+        <div class="floating-batch-widget" id="batch-widget-individual">
+          <button class="batch-btn active" data-batch="ALL">All Batches</button>
+          <button class="batch-btn" data-batch="2026">2026</button>
+          <button class="batch-btn" data-batch="2027">2027</button>
+          <button class="batch-btn" data-batch="2028">2028</button>
+          <button class="batch-btn" data-batch="2029">2029</button>
+          <button class="batch-btn" data-batch="2030">2030</button>
+        </div>
+        
+        <div class="table-container glass-panel">
+          <table id="table-students">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Roll Number</th>
+                <th>Name</th>
+                <th>Branch</th>
+                <th>Batch</th>
+                <th>Total Score</th>
+                <th>LeetCode</th>
+                <th>HackerRank</th>
+                <th>Codeforces</th>
+                <th>GFG</th>
+                <th>CodeChef</th>
+                <th>GitHub</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-students">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 2. TEAM (BRANCH) FLOATING WIDGET PANEL -->
+      <div class="widget-panel" id="panel-team">
+        <div class="panel-header">
+          <h2><i class="fa-solid fa-users-viewfinder"></i> Academic Branches (Teams) Comparison</h2>
+        </div>
+
+        <!-- Hovering Horizontal Batch Widget for Body 2 -->
+        <div class="floating-batch-widget" id="batch-widget-team">
+          <button class="batch-btn active" data-batch="ALL">All Batches</button>
+          <button class="batch-btn" data-batch="2026">2026</button>
+          <button class="batch-btn" data-batch="2027">2027</button>
+          <button class="batch-btn" data-batch="2028">2028</button>
+          <button class="batch-btn" data-batch="2029">2029</button>
+          <button class="batch-btn" data-batch="2030">2030</button>
+        </div>
+        <div class="table-container glass-panel">
+          <table id="table-branches">
+            <thead>
+              <tr>
+                <th>Branch Name</th>
+                <th>Total Students</th>
+                <th>Average Performance Score</th>
+                <th>Highest Ranked Student (Roll)</th>
+                <th>Highest Score</th>
+                <th>Lowest Ranked Student (Roll)</th>
+                <th>Lowest Score</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-branches">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 3. COMPARE FLOATING WIDGET PANEL -->
+      <div class="widget-panel" id="panel-compare">
+        <div class="panel-header">
+          <h2><i class="fa-solid fa-code-compare"></i> Student Side-by-Side Comparison</h2>
+        </div>
+        
+        <div class="compare-container">
+          <div class="compare-input-card glass-panel">
+            <h3><i class="fa-solid fa-circle-user" style="color: var(--primary);"></i> Student A</h3>
+            <div class="form-group">
+              <label for="compare-student-a">Roll Number / Registration ID</label>
+              <input type="text" id="compare-student-a" list="student-list" placeholder="Search or select Roll Number">
+            </div>
+          </div>
+          <div class="compare-input-card glass-panel">
+            <h3><i class="fa-solid fa-circle-user" style="color: var(--accent);"></i> Student B</h3>
+            <div class="form-group">
+              <label for="compare-student-b">Roll Number / Registration ID</label>
+              <input type="text" id="compare-student-b" list="student-list" placeholder="Search or select Roll Number">
+            </div>
+          </div>
+        </div>
+
+        <datalist id="student-list">
+          <!-- Dynamically populated with registered student roll numbers -->
+        </datalist>
+
+        <!-- Compare results display -->
+        <div class="compare-results-wrapper" id="compare-results" style="display: none;">
+          <div class="table-container glass-panel">
+            <table class="compare-table">
+              <thead>
+                <tr>
+                  <th>Platform/Metric</th>
+                  <th id="compare-hdr-a">Student A</th>
+                  <th id="compare-hdr-b">Student B</th>
+                  <th>Win / Lead</th>
+                </tr>
+              </thead>
+              <tbody id="compare-tbody">
+                <!-- Dynamically populated comparison cells -->
+              </tbody>
+            </table>
+          </div>
+
+          <div class="verdict-box" id="compare-verdict-card">
+            <div class="verdict-icon"><i class="fa-solid fa-circle-check"></i></div>
+            <div class="verdict-info">
+              <h4 id="verdict-title">Final Verdict</h4>
+              <p id="verdict-desc">Select two registered students to generate an analytical comparison and winner breakdown.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. PRINCIPAL ANALYTICS FLOATING WIDGET PANEL -->
+      <div class="widget-panel" id="panel-analytics">
+        <div class="panel-header">
+          <h2 id="principal-branch-title"><i class="fa-solid fa-chart-line"></i> Analytics: Branch View</h2>
+          <div class="panel-controls" style="display: flex; align-items: center; gap: 1rem;">
+            <span style="color: var(--text-secondary); font-size: 0.9rem;">Batch Year:</span>
+            <select class="filter-select" id="principal-filter-batch">
+              <option value="ALL">All Batches</option>
+              <option value="2026">2026</option>
+              <option value="2027">2027</option>
+              <option value="2028">2028</option>
+              <option value="2029">2029</option>
+              <option value="2030">2030</option>
+            </select>
+            <button class="btn-primary" id="btn-principal-change-branch" style="width: auto; padding: 0.5rem 1rem; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; margin-top: 0;">
+              <i class="fa-solid fa-rotate"></i> Change Branch
+            </button>
+          </div>
+        </div>
+        
+        <!-- Summary metrics cards for the branch -->
+        <div class="dashboard-grid" style="margin-bottom: 2rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
+          <div class="stat-card glass-panel">
+            <div class="stat-icon blue"><i class="fa-solid fa-users"></i></div>
+            <div class="stat-info">
+              <h3>Branch Students</h3>
+              <div class="stat-value" id="stat-principal-branch-students">0</div>
+            </div>
+          </div>
+          <div class="stat-card glass-panel">
+            <div class="stat-icon green"><i class="fa-solid fa-gauge-high"></i></div>
+            <div class="stat-info">
+              <h3>Average CTS Score</h3>
+              <div class="stat-value" id="stat-principal-branch-avg">0</div>
+            </div>
+          </div>
+          <div class="stat-card glass-panel">
+            <div class="stat-icon amber"><i class="fa-solid fa-award"></i></div>
+            <div class="stat-info">
+              <h3>Branch Highest Score</h3>
+              <div class="stat-value" id="stat-principal-branch-highest">0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Analytical Charts Grid -->
+        <div class="analytics-charts-grid" style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 2rem; margin-bottom: 2rem;">
+          <div class="chart-card glass-panel" style="padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: var(--bg-card); position: relative; height: 350px;">
+            <h3 style="margin-bottom: 1rem;"><i class="fa-solid fa-chart-column"></i> Platform-wise Average Performance</h3>
+            <div style="position: relative; height: 260px; width: 100%;">
+              <canvas id="chart-principal-platform"></canvas>
+            </div>
+          </div>
+          <div class="chart-card glass-panel" style="padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: var(--bg-card); position: relative; height: 350px;">
+            <h3 style="margin-bottom: 1rem;"><i class="fa-solid fa-chart-pie"></i> CTS Performance Bands</h3>
+            <div style="position: relative; height: 260px; width: 100%;">
+              <canvas id="chart-principal-band"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Student Listing Table for details -->
+        <div class="table-title" style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+          <h3><i class="fa-solid fa-list-ol"></i> Student Standings (Selected Branch & Batch)</h3>
+        </div>
+        <div class="table-container glass-panel" style="margin-bottom: 2rem;">
+          <table>
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Roll Number</th>
+                <th>Name</th>
+                <th>Batch</th>
+                <th>Total Score</th>
+                <th>LeetCode</th>
+                <th>HackerRank</th>
+                <th>Codeforces</th>
+                <th>GFG</th>
+                <th>CodeChef</th>
+                <th>GitHub</th>
+              </tr>
+            </thead>
+            <tbody id="table-principal-branch-students">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ADMIN PORTAL VIEW -->
+    <section class="view-container" id="view-admin">
+      <div class="admin-wrapper">
+        
+        <!-- 1. ADMIN DASHBOARD -->
+        <div class="admin-panel active" id="admin-panel-dashboard">
+          <div class="panel-header">
+            <h2><i class="fa-solid fa-gauge"></i> Admin Dashboard Overview</h2>
+          </div>
+          
+          <!-- Carousels Grid -->
+          <div class="dashboard-grid">
+            <div class="stat-card glass-panel">
+              <div class="stat-icon blue"><i class="fa-solid fa-users"></i></div>
+              <div class="stat-info">
+                <h3>Registered Students</h3>
+                <div class="stat-value" id="admin-dash-total">0</div>
+              </div>
+            </div>
+            <div class="stat-card glass-panel">
+              <div class="stat-icon green"><i class="fa-solid fa-circle-check"></i></div>
+              <div class="stat-info">
+                <h3>Students with Ratings</h3>
+                <div class="stat-value" id="admin-dash-rated">0</div>
+              </div>
+            </div>
+            <div class="stat-card glass-panel">
+              <div class="stat-icon amber"><i class="fa-solid fa-clock"></i></div>
+              <div class="stat-info">
+                <h3>Pending Ratings</h3>
+                <div class="stat-value" id="admin-dash-pending">0</div>
+              </div>
+            </div>
+            <div class="stat-card glass-panel">
+              <div class="stat-icon purple"><i class="fa-solid fa-link-slash"></i></div>
+              <div class="stat-info">
+                <h3>No Platforms Linked</h3>
+                <div class="stat-value" id="admin-dash-noplatform">0</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Platform adaptations and rated mentions -->
+          <div class="admin-dash-subgrid" style="margin-top: 1.5rem; display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem;">
+            <div class="glass-panel" style="padding: 1.5rem;">
+              <h3 style="margin-bottom: 1rem;"><i class="fa-solid fa-circle-nodes" style="color: var(--primary);"></i> Platform Adaptation Percentages</h3>
+              <div id="admin-dash-platform-pct" style="display: flex; flex-direction: column; gap: 0.8rem;"></div>
+            </div>
+            <div class="glass-panel" style="padding: 1.5rem;">
+              <h3 style="margin-bottom: 1rem;"><i class="fa-solid fa-calendar-check" style="color: var(--accent);"></i> Batch-wise Registration Breakdown</h3>
+              <div class="table-container" style="box-shadow: none; border: none; padding: 0;">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Batch Year</th>
+                      <th>Total Students</th>
+                      <th>Total Aggregate Score</th>
+                    </tr>
+                  </thead>
+                  <tbody id="admin-dash-batch-breakdown"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Top performers -->
+          <div class="glass-panel" style="margin-top: 1.5rem; padding: 1.5rem;">
+            <h3 style="margin-bottom: 1rem;"><i class="fa-solid fa-trophy" style="color: var(--warning);"></i> Interactive Top 5 Performing Students</h3>
+            <div class="table-container" style="box-shadow: none; border: none; padding: 0;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Roll Number</th>
+                    <th>Name</th>
+                    <th>Branch</th>
+                    <th>Batch</th>
+                    <th>Total Score</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-dash-top-performers"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. ADMIN USERS DIRECTORY -->
+        <div class="admin-panel" id="admin-panel-users" style="display: none;">
+          <div class="panel-header" style="flex-wrap: wrap; gap: 1rem;">
+            <h2><i class="fa-solid fa-users"></i> Student Directory Management</h2>
+            <div class="panel-controls" style="flex-wrap: wrap; gap: 0.5rem; width: 100%; justify-content: flex-start; margin-top: 0.5rem;">
+              <div class="search-input-group">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="admin-users-search" placeholder="Search by name, roll...">
+              </div>
+              <select class="filter-select" id="admin-users-filter-batch">
+                <option value="ALL">All Batches</option>
+                <option value="2026">2026</option>
+                <option value="2027">2027</option>
+                <option value="2028">2028</option>
+                <option value="2029">2029</option>
+                <option value="2030">2030</option>
+              </select>
+              <select class="filter-select" id="admin-users-filter-status">
+                <option value="ALL">All Status</option>
+                <option value="RATED">Rated</option>
+                <option value="PENDING">Pending Ratings</option>
+                <option value="NOPLATFORM">No Platforms</option>
+              </select>
+              <select class="filter-select" id="admin-users-sort">
+                <option value="score">Sort by Total Score</option>
+                <option value="name">Sort by Name</option>
+                <option value="roll">Sort by Roll</option>
+                <option value="leetcode">Sort by LeetCode</option>
+                <option value="hackerrank">Sort by HackerRank</option>
+                <option value="codeforces">Sort by Codeforces</option>
+                <option value="gfg">Sort by GFG</option>
+                <option value="codechef">Sort by CodeChef</option>
+                <option value="github">Sort by GitHub</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-container glass-panel" style="margin-top: 1rem;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Roll</th>
+                  <th>Name</th>
+                  <th>Branch</th>
+                  <th>Batch</th>
+                  <th>Score</th>
+                  <th>LeetCode</th>
+                  <th>HackerRank</th>
+                  <th>Codeforces</th>
+                  <th>GFG</th>
+                  <th>CodeChef</th>
+                  <th>GitHub</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="admin-users-tbody"></tbody>
+            </table>
+          </div>
+
+          <!-- Bottom Action Buttons -->
+          <div style="display: flex; gap: 1rem; margin-top: 1.5rem; flex-wrap: wrap;">
+            <button class="btn btn-primary" id="btn-admin-export-csv"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
+            <button class="btn btn-secondary" id="btn-admin-server-export"><i class="fa-solid fa-file-export"></i> Server Export</button>
+            <button class="btn btn-warning" id="btn-admin-refresh-pending"><i class="fa-solid fa-rotate"></i> Refresh Pending</button>
+            <button class="btn btn-success" id="btn-admin-refresh-all-users"><i class="fa-solid fa-arrows-spin"></i> Refresh All</button>
+          </div>
+        </div>
+
+        <!-- 3. ADMIN ANALYTICS -->
+        <div class="admin-panel" id="admin-panel-analytics" style="display: none;">
+          <div class="panel-header" style="justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+            <h2><i class="fa-solid fa-chart-pie"></i> Interactive Analytics Dashboard</h2>
+            <div style="display: flex; gap: 0.5rem;">
+              <button class="btn btn-primary" id="btn-analytics-csv"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
+              <button class="btn btn-secondary" onclick="window.print()"><i class="fa-solid fa-print"></i> Print</button>
+              <button class="btn btn-success" id="btn-analytics-refresh"><i class="fa-solid fa-rotate"></i> Refresh</button>
+            </div>
+          </div>
+
+          <!-- 6 Floating Carousels -->
+          <div class="dashboard-grid" style="margin-top: 1rem;">
+            <div class="stat-card glass-panel">
+              <div class="stat-info"><h3>Total Students</h3><div class="stat-value" id="analytics-total">0</div></div>
+            </div>
+            <div class="stat-card glass-panel">
+              <div class="stat-info"><h3>Active (Linked)</h3><div class="stat-value" id="analytics-active">0</div></div>
+            </div>
+            <div class="stat-card glass-panel">
+              <div class="stat-info"><h3>Inactive (Unlinked)</h3><div class="stat-value" id="analytics-inactive">0</div></div>
+            </div>
+            <div class="stat-card glass-panel">
+              <div class="stat-info"><h3>Average CTI Score</h3><div class="stat-value" id="analytics-avg-rating">0</div></div>
+            </div>
+            <div class="stat-card glass-panel">
+              <div class="stat-info"><h3>Max CTI Score</h3><div class="stat-value" id="analytics-max-rating">0</div></div>
+            </div>
+            <div class="stat-card glass-panel">
+              <div class="stat-info"><h3>Platform Coverage</h3><div class="stat-value" id="analytics-coverage">0%</div></div>
+            </div>
+          </div>
+
+          <!-- Graphs Layout Grid -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; margin-top: 2rem;">
+            <div class="glass-panel" style="padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between; min-height: 330px;">
+              <h3 style="margin-bottom: 0.75rem; font-size: 1rem; font-weight: 600; text-align: center;"><i class="fa-solid fa-chart-line" style="color: var(--primary); margin-right: 0.5rem;"></i> Registration Trend</h3>
+              <div style="position: relative; height: 250px; width: 100%;">
+                <canvas id="chart-registration-trend"></canvas>
+              </div>
+            </div>
+            <div class="glass-panel" style="padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between; min-height: 330px;">
+              <h3 style="margin-bottom: 0.75rem; font-size: 1rem; font-weight: 600; text-align: center;"><i class="fa-solid fa-chart-bar" style="color: var(--success); margin-right: 0.5rem;"></i> Platform Adaptation</h3>
+              <div style="position: relative; height: 250px; width: 100%;">
+                <canvas id="chart-platform-adaptation"></canvas>
+              </div>
+            </div>
+            <div class="glass-panel" style="padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between; min-height: 330px;">
+              <h3 style="margin-bottom: 0.75rem; font-size: 1rem; font-weight: 600; text-align: center;"><i class="fa-solid fa-square-poll-vertical" style="color: var(--warning); margin-right: 0.5rem;"></i> Score Distribution</h3>
+              <div style="position: relative; height: 250px; width: 100%;">
+                <canvas id="chart-score-distribution"></canvas>
+              </div>
+            </div>
+            <div class="glass-panel" style="padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between; min-height: 330px;">
+              <h3 style="margin-bottom: 0.75rem; font-size: 1rem; font-weight: 600; text-align: center;"><i class="fa-solid fa-chart-pie" style="color: var(--accent); margin-right: 0.5rem;"></i> Branch Distribution</h3>
+              <div style="position: relative; height: 250px; width: 100%;">
+                <canvas id="chart-branch-distribution"></canvas>
+              </div>
+            </div>
+            <div class="glass-panel" style="padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between; min-height: 330px;">
+              <h3 style="margin-bottom: 0.75rem; font-size: 1rem; font-weight: 600; text-align: center;"><i class="fa-solid fa-sliders" style="color: var(--danger); margin-right: 0.5rem;"></i> Year-wise Comparison</h3>
+              <div style="position: relative; height: 250px; width: 100%;">
+                <canvas id="chart-year-comparison"></canvas>
+              </div>
+            </div>
+            <div class="glass-panel" style="padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between; min-height: 330px;">
+              <h3 style="margin-bottom: 0.75rem; font-size: 1rem; font-weight: 600; text-align: center;"><i class="fa-solid fa-circle-nodes" style="color: var(--primary); margin-right: 0.5rem;"></i> Platform Ratings Overview</h3>
+              <div style="position: relative; height: 250px; width: 100%;">
+                <canvas id="chart-platform-ratings"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Top 10 Performers List -->
+          <div class="glass-panel" style="margin-top: 2rem; padding: 1.5rem;">
+            <h3 style="margin-bottom: 1rem;"><i class="fa-solid fa-ranking-star" style="color: var(--warning);"></i> Top 10 Performing Students Leaderboard</h3>
+            <div class="table-container" style="box-shadow: none; border: none; padding: 0;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Roll Number</th>
+                    <th>Name</th>
+                    <th>Branch</th>
+                    <th>Batch</th>
+                    <th>Aggregate Score</th>
+                  </tr>
+                </thead>
+                <tbody id="analytics-top-10"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. ADMIN ACTIVITY -->
+        <div class="admin-panel" id="admin-panel-activity" style="display: none;">
+          <div class="panel-header">
+            <h2><i class="fa-solid fa-chart-line"></i> Student Activity Tracker</h2>
+          </div>
+          <div class="glass-panel" style="margin-top: 1rem; padding: 1.5rem;">
+            <div id="admin-activity-timeline" style="display: flex; flex-direction: column; gap: 1rem;"></div>
+          </div>
+        </div>
+
+        <!-- 5. ADMIN AUDIT LOG -->
+        <div class="admin-panel" id="admin-panel-audit" style="display: none;">
+          <div class="panel-header">
+            <h2><i class="fa-solid fa-file-shield"></i> Administration Audit Logs</h2>
+          </div>
+          <div class="table-container glass-panel" style="margin-top: 1rem;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Administrator</th>
+                  <th>Action Log Description</th>
+                </tr>
+              </thead>
+              <tbody id="admin-audit-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 6. ADMIN NOTIFY -->
+        <div class="admin-panel" id="admin-panel-notify" style="display: none;">
+          <div class="panel-header">
+            <h2><i class="fa-solid fa-paper-plane"></i> Dispatch Email Broadcast Notifications</h2>
+          </div>
+          <form id="form-admin-notify" class="glass-panel" style="margin-top: 1rem; padding: 2rem;" novalidate>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-bottom: 1.5rem;">
+              <div class="form-group">
+                <label>Send Via</label>
+                <div style="display: flex; gap: 1rem; align-items: center; margin-top: 0.5rem;">
+                  <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 500;">
+                    <input type="checkbox" id="notify-via-email" checked disabled> Email / Gmail Service
+                  </label>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Recipients Type</label>
+                <div style="display: flex; gap: 1.5rem; align-items: center; margin-top: 0.5rem;">
+                  <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 500;">
+                    <input type="radio" name="notify-recipients" value="all" checked> All Users
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 500;">
+                    <input type="radio" name="notify-recipients" value="specific"> Filtered Group
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Filter Panel -->
+            <div id="notify-filters-section" style="display: none; border-top: 1px solid var(--border-color); padding-top: 1.5rem; margin-bottom: 1.5rem; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+              <div class="form-group">
+                <label for="notify-batch-filter">Target Graduation Batch</label>
+                <select id="notify-batch-filter" class="filter-select" style="width: 100%;">
+                  <option value="ALL">All Batches</option>
+                  <option value="2026">2026</option>
+                  <option value="2027">2027</option>
+                  <option value="2028">2028</option>
+                  <option value="2029">2029</option>
+                  <option value="2030">2030</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="notify-branch-filter">Target Branch</label>
+                <select id="notify-branch-filter" class="filter-select" style="width: 100%;">
+                  <option value="ALL">All Branches</option>
+                  <option value="CSE">CSE</option>
+                  <option value="CSM">CSM</option>
+                  <option value="AIML">AIML</option>
+                  <option value="MECH">MECH</option>
+                  <option value="ECE">ECE</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="notify-platform-filter">Linked Coding Accounts filter</label>
+                <select id="notify-platform-filter" class="filter-select" style="width: 100%;">
+                  <option value="ALL">All Accounts</option>
+                  <option value="leetcode">LeetCode accounts only</option>
+                  <option value="hackerrank">HackerRank accounts only</option>
+                  <option value="codeforces">Codeforces accounts only</option>
+                  <option value="gfg">GFG accounts only</option>
+                  <option value="codechef">CodeChef accounts only</option>
+                  <option value="github">GitHub accounts only</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+              <label for="notify-subject">Email Subject Title</label>
+              <input type="text" id="notify-subject" required placeholder="Enter broadcast mail subject header..." class="input-text">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+              <label for="notify-body">Message Body Contents</label>
+              <textarea id="notify-body" required rows="6" placeholder="Compose notification content body for the students..." style="width: 100%; padding: 0.8rem; border-radius: var(--radius-sm); background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); color: var(--text-primary); font-family: inherit; font-size: 0.95rem; resize: vertical; outline: none;"></textarea>
+            </div>
+
+            <button type="submit" class="btn-primary"><i class="fa-solid fa-paper-plane"></i> Dispatch Email Broadcast</button>
+          </form>
+        </div>
+
+        <!-- 7. ADMIN NOTICES -->
+        <div class="admin-panel" id="admin-panel-notices" style="display: none;">
+          <div class="panel-header">
+            <h2><i class="fa-solid fa-bullhorn"></i> Portal Notice Board (Announcements)</h2>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: 2fr 3fr; gap: 1.5rem; margin-top: 1rem;">
+            <!-- Notice Form -->
+            <form id="form-admin-notice" class="glass-panel" style="padding: 1.5rem;" novalidate>
+              <h3 style="margin-bottom: 1rem;">Create Announcement</h3>
+              
+              <div class="form-group" style="margin-bottom: 1rem;">
+                <label for="notice-title">Notice Title</label>
+                <input type="text" id="notice-title" required placeholder="e.g. CodeChef Contest details..." class="input-text">
+              </div>
+              
+              <div class="form-group" style="margin-bottom: 1rem;">
+                <label for="notice-message">Notice Message</label>
+                <textarea id="notice-message" required rows="4" placeholder="Announcement details..." style="width: 100%; padding: 0.8rem; border-radius: var(--radius-sm); background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); color: var(--text-primary); font-family: inherit; font-size: 0.9rem; resize: none; outline: none;"></textarea>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label for="notice-priority">Notice Priority</label>
+                <select id="notice-priority" class="filter-select" style="width: 100%;">
+                  <option value="normal">Normal</option>
+                  <option value="imp">Important</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+              </div>
+
+              <button type="submit" class="btn-primary" style="width: 100%;"><i class="fa-solid fa-check"></i> Publish Announcement</button>
+            </form>
+
+            <!-- Notices List -->
+            <div class="glass-panel" style="padding: 1.5rem;">
+              <h3 style="margin-bottom: 1rem;">Published Notices</h3>
+              <div id="admin-notices-list" style="display: flex; flex-direction: column; gap: 1rem; max-height: 400px; overflow-y: auto; padding-right: 0.5rem;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 8. ADMIN REFRESH MANAGER -->
+        <div class="admin-panel" id="admin-panel-refresh" style="display: none;">
+          <div class="panel-header">
+            <h2><i class="fa-solid fa-arrows-rotate"></i> Coding Platform Crawler Sync Scheduler</h2>
+          </div>
+          
+          <div class="glass-panel" style="margin-top: 1rem; padding: 2rem; display: flex; flex-direction: column; gap: 1.5rem;">
+            <div>
+              <h3>Crawler Scheduling Engine</h3>
+              <p style="color: var(--text-secondary); margin-top: 0.5rem; font-size: 0.95rem;">
+                Platform ratings crawl automatically syncs every night at <strong style="color: var(--warning);">9:00 PM IST</strong> via background cron tasks.
+                Administrators can manually override this schedule below to trigger a forced crawling sync of student statistics.
+              </p>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); padding: 1.5rem 0;">
+              <div>
+                <span style="color: var(--text-secondary); font-size: 0.85rem;">Scheduler Sync Status</span>
+                <div style="font-size: 1.3rem; font-weight: 700; color: var(--success); margin-top: 0.25rem;">Active (Idle)</div>
+              </div>
+              <div>
+                <span style="color: var(--text-secondary); font-size: 0.85rem;">Total Users Checked</span>
+                <div style="font-size: 1.3rem; font-weight: 700; color: var(--text-primary); margin-top: 0.25rem;" id="refresh-total-users">0</div>
+              </div>
+              <div>
+                <span style="color: var(--text-secondary); font-size: 0.85rem;">Pending Users</span>
+                <div style="font-size: 1.3rem; font-weight: 700; color: var(--warning); margin-top: 0.25rem;" id="refresh-pending-users">0</div>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 1rem;">
+              <button class="btn btn-warning" id="btn-refresh-pending-only" style="flex: 1;"><i class="fa-solid fa-arrows-spin"></i> Refresh Pending Only</button>
+              <button class="btn btn-success" id="btn-refresh-all-users" style="flex: 1;"><i class="fa-solid fa-arrow-rotate-left"></i> Refresh All Users</button>
+              <button class="btn btn-primary" id="btn-refresh-async" style="flex: 1;"><i class="fa-solid fa-clock-rotate-left"></i> Queue Async Refresh</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 9. ADMIN ACCESS CONTROLS -->
+        <div class="admin-panel" id="admin-panel-access" style="display: none;">
+          <div class="panel-header">
+            <h2><i class="fa-solid fa-key"></i> Administrator Role Access Settings</h2>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: 2fr 3fr; gap: 1.5rem; margin-top: 1rem;">
+            <!-- Create Account Form -->
+            <form id="form-admin-access" class="glass-panel" style="padding: 1.5rem;" novalidate>
+              <h3 style="margin-bottom: 1rem;">Provision Administrative Account</h3>
+              
+              <div class="form-group" style="margin-bottom: 1rem;">
+                <label for="access-user">Username / Roll Number / email</label>
+                <input type="text" id="access-user" required placeholder="e.g. dean@college.edu or hod.it@college.edu" class="input-text">
+              </div>
+              
+              <div class="form-group" style="margin-bottom: 1rem;">
+                <label for="access-name">User Full Name</label>
+                <input type="text" id="access-name" required placeholder="e.g. Dr. Ramesh Kumar" class="input-text">
+              </div>
+
+              <div class="form-group" style="margin-bottom: 1rem;">
+                <label for="access-pass">User Password</label>
+                <input type="password" id="access-pass" required placeholder="At least 6 characters" class="input-text">
+              </div>
+
+              <div class="form-group" style="margin-bottom: 1rem;">
+                <label for="access-email">Personal Gmail (For recovery)</label>
+                <input type="email" id="access-email" placeholder="e.g. administrator@gmail.com" class="input-text">
+              </div>
+
+              <div class="form-group" style="margin-bottom: 1rem;">
+                <label for="access-role">Access Permission Role</label>
+                <select id="access-role" class="filter-select" style="width: 100%;">
+                  <option value="hod">HOD (Department level read/export)</option>
+                  <option value="principal">Principal (Global college view/export)</option>
+                  <option value="admin">System Admin (Full edit/access control)</option>
+                </select>
+              </div>
+
+              <div class="form-group" id="access-branch-group" style="margin-bottom: 1.5rem;">
+                <label for="access-branch">Academic Branch (HOD only)</label>
+                <select id="access-branch" class="filter-select" style="width: 100%;">
+                  <option value="" disabled selected>Select branch...</option>
+                  <option value="CSE">CSE</option>
+                  <option value="CSM">CSM</option>
+                  <option value="AIML">AIML</option>
+                  <option value="MECH">MECH</option>
+                  <option value="ECE">ECE</option>
+                </select>
+              </div>
+
+              <button type="submit" class="btn-primary" style="width: 100%;"><i class="fa-solid fa-plus"></i> Create Account</button>
+            </form>
+
+            <!-- Accounts List -->
+            <div class="glass-panel" style="padding: 1.5rem;">
+              <h3 style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                <span>Seeded / Created Accounts</span>
+                <button class="btn btn-secondary" id="btn-access-refresh" style="font-size: 0.75rem; padding: 0.2rem 0.6rem;"><i class="fa-solid fa-arrows-rotate"></i> Refresh</button>
+              </h3>
+              <div class="table-container" style="box-shadow: none; border: none; padding: 0; max-height: 400px; overflow-y: auto;">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>User</th>
+                      <th>Password</th>
+                      <th>Role</th>
+                      <th>Dept</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="access-accounts-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 10. ADMIN ASSIGNMENTS -->
+        <div class="admin-panel" id="admin-panel-assignments" style="display: none;">
+          <div class="panel-header">
+            <h2><i class="fa-solid fa-file-signature"></i> Assignments Creation Engine</h2>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: 2fr 3fr; gap: 1.5rem; margin-top: 1rem;">
+            <!-- Create Assignment Form -->
+            <form id="form-admin-assignment" class="glass-panel" style="padding: 1.5rem;" novalidate>
+              <h3 style="margin-bottom: 1rem;">Post Coding Assignment</h3>
+              
+              <div class="form-group" style="margin-bottom: 1rem;">
+                <label for="assign-title">Assignment Title</label>
+                <input type="text" id="assign-title" required placeholder="e.g. Solve 5 medium trees questions..." class="input-text">
+              </div>
+              
+              <div class="form-group" style="margin-bottom: 1rem;">
+                <label for="assign-desc">Description / Instructions</label>
+                <textarea id="assign-desc" required rows="4" placeholder="Provide assignment description..." style="width: 100%; padding: 0.8rem; border-radius: var(--radius-sm); background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); color: var(--text-primary); font-family: inherit; font-size: 0.9rem; resize: none; outline: none;"></textarea>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 1rem;">
+                <label for="assign-deadline">Submission Deadline Date</label>
+                <input type="date" id="assign-deadline" required class="input-text">
+              </div>
+
+              <div class="form-group" style="margin-bottom: 1rem;">
+                <label>Target Batches</label>
+                <div style="display: flex; flex-wrap: wrap; gap: 0.8rem; margin-top: 0.25rem;">
+                  <label><input type="checkbox" name="assign-batches" value="2026"> 2026</label>
+                  <label><input type="checkbox" name="assign-batches" value="2027"> 2027</label>
+                  <label><input type="checkbox" name="assign-batches" value="2028"> 2028</label>
+                  <label><input type="checkbox" name="assign-batches" value="2029"> 2029</label>
+                  <label><input type="checkbox" name="assign-batches" value="2030"> 2030</label>
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label>Target Branches</label>
+                <div style="display: flex; flex-wrap: wrap; gap: 0.8rem; margin-top: 0.25rem;">
+                  <label><input type="checkbox" name="assign-branches" value="CSE"> CSE</label>
+                  <label><input type="checkbox" name="assign-branches" value="CSM"> CSM</label>
+                  <label><input type="checkbox" name="assign-branches" value="AIML"> AIML</label>
+                  <label><input type="checkbox" name="assign-branches" value="MECH"> MECH</label>
+                  <label><input type="checkbox" name="assign-branches" value="ECE"> ECE</label>
+                </div>
+              </div>
+
+              <button type="submit" class="btn-primary" style="width: 100%;"><i class="fa-solid fa-plus"></i> Create Assignment</button>
+            </form>
+
+            <!-- Assignments List -->
+            <div class="glass-panel" style="padding: 1.5rem;">
+              <h3 style="margin-bottom: 1rem;">Active Posted Assignments</h3>
+              <div id="admin-assignments-list" style="display: flex; flex-direction: column; gap: 1rem; max-height: 400px; overflow-y: auto;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 11. ADMIN SETTINGS -->
+        <div class="admin-panel" id="admin-panel-settings" style="display: none;">
+          <div class="panel-header">
+            <h2><i class="fa-solid fa-sliders"></i> General System Settings</h2>
+          </div>
+          <div class="glass-panel" style="margin-top: 1rem; padding: 2rem;">
+            <h3>System Settings</h3>
+            <p style="color: var(--text-secondary); margin-top: 0.5rem; font-size: 0.95rem;">
+              System configurations (like SMTP settings, API Rate Limiting parameters, and database sync frequencies) can be administered here.
+            </p>
+            <div class="form-group" style="margin-top: 1.5rem;">
+              <label>College Name</label>
+              <input type="text" value="Ideal Engineering College" class="input-text" style="width: 100%; max-width: 400px; margin-top: 0.25rem;">
+            </div>
+            <button class="btn btn-primary" style="margin-top: 1.5rem;" onclick="alert('Settings saved successfully!')">Save General Settings</button>
+          </div>
+
+          <div class="glass-panel" style="margin-top: 2rem; padding: 2rem;">
+            <h3>Security Settings</h3>
+            <p style="color: var(--text-secondary); margin-top: 0.5rem; font-size: 0.95rem;">
+              Update your administrative account password here.
+            </p>
+            <form id="form-admin-change-password" style="margin-top: 1.5rem; max-width: 400px;" novalidate>
+              <div class="form-group" style="margin-bottom: 1rem;">
+                <label for="admin-change-pwd-current">Current Password</label>
+                <input type="password" id="admin-change-pwd-current" required class="input-text" style="margin-top: 0.25rem;">
+                <div class="error-msg" id="admin-change-pwd-current-error" style="margin-top: 0.25rem; font-size: 0.8rem; color: #ef4444; display: none;">
+                  <span>❌</span> Current password is required.
+                </div>
+              </div>
+              <div class="form-group" style="margin-bottom: 1rem;">
+                <label for="admin-change-pwd-new">New Password</label>
+                <input type="password" id="admin-change-pwd-new" required class="input-text" style="margin-top: 0.25rem;">
+                <div class="error-msg" id="admin-change-pwd-new-error" style="margin-top: 0.25rem; font-size: 0.8rem; color: #ef4444; display: none;">
+                  <span>❌</span> New password is required.
+                </div>
+              </div>
+              <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label for="admin-change-pwd-confirm">Confirm New Password</label>
+                <input type="password" id="admin-change-pwd-confirm" required class="input-text" style="margin-top: 0.25rem;">
+                <div class="error-msg" id="admin-change-pwd-confirm-error" style="margin-top: 0.25rem; font-size: 0.8rem; color: #ef4444; display: none;">
+                  <span>❌</span> Passwords do not match.
+                </div>
+              </div>
+              <button type="submit" class="btn-primary" style="width: 100%;">Update Admin Password</button>
+            </form>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- EXCLUSIVE PROFILE VIEW: FOR LOGGED IN STUDENT -->
+    <section class="view-container" id="view-student-profile">
+      <!-- Hovering Horizontal Batch Widget for Student Personal View -->
+      <div class="floating-batch-widget" id="batch-widget-self" style="margin-top: 1rem; margin-bottom: 1rem; top: 0; position: relative;">
+        <button class="batch-btn active" id="btn-batch-self-indicator" style="pointer-events: none; width: 100%; text-align: center;">Batch Year: Loading...</button>
+      </div>
+      <div class="student-profile-grid">
+        
+        <!-- Left: Summary Details -->
+        <div class="student-self-info-card glass-panel">
+          <div class="profile-avatar" id="self-avatar">?</div>
+          <h2 id="self-name">Loading...</h2>
+          <div class="profile-roll" id="self-roll">-</div>
+          <div class="profile-branch" id="self-branch">-</div>
+          <p id="self-email" style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.5rem;"></p>
+          
+          <div class="profile-rank-indicator">
+            <div class="rank-mini-card">
+              <span>College Rank</span>
+              <strong id="self-college-rank">#--</strong>
+            </div>
+            <div class="rank-mini-card">
+              <span>Branch Rank</span>
+              <strong id="self-branch-rank">#--</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Detail Platform Scores and Links -->
+        <div class="student-self-stats-card glass-panel">
+          <h3 style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+            <span><i class="fa-solid fa-chart-line" style="color: var(--primary);"></i> Platform Performance Stats</span>
+            <button class="floating-widget-btn" id="btn-update-links" style="font-size: 0.8rem; padding: 0.3rem 0.8rem;">
+              <i class="fa-solid fa-pen-to-square"></i> Edit Profile Links
+            </button>
+          </h3>
+          
+          <div class="profile-stats-sec">
+            <div class="profile-stat-row">
+              <span><i class="fa-solid fa-code" style="color: #ffa116;"></i> LeetCode Profile</span>
+              <a href="#" target="_blank" id="self-url-lc" class="auth-link">View Profile</a>
+              <strong>Solved: <span id="self-score-lc">0</span> <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-secondary);">(Rank: <span id="self-rank-lc">N/A</span>)</span></strong>
+            </div>
+            
+            <div class="profile-stat-row">
+              <span><i class="fa-solid fa-laptop-code" style="color: #2ec866;"></i> HackerRank Profile</span>
+              <a href="#" target="_blank" id="self-url-hr" class="auth-link">View Profile</a>
+              <strong>Score: <span id="self-score-hr">0</span> <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-secondary);">(Rank: <span id="self-rank-hr">N/A</span>)</span></strong>
+            </div>
+            
+            <div class="profile-stat-row">
+              <span><i class="fa-solid fa-chart-line" style="color: #3b5998;"></i> Codeforces Profile</span>
+              <a href="#" target="_blank" id="self-url-cf" class="auth-link">View Profile</a>
+              <strong>Rating: <span id="self-score-cf">0</span> <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-secondary);">(Rank: <span id="self-rank-cf">N/A</span>)</span></strong>
+            </div>
+            
+            <div class="profile-stat-row">
+              <span><i class="fa-solid fa-terminal" style="color: #2f8955;"></i> GeeksforGeeks Profile</span>
+              <a href="#" target="_blank" id="self-url-gfg" class="auth-link">View Profile</a>
+              <strong>Solved: <span id="self-score-gfg">0</span> <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-secondary);">(Rank: <span id="self-rank-gfg">N/A</span>)</span></strong>
+            </div>
+
+            <div class="profile-stat-row">
+              <span><i class="fa-solid fa-cookie-bite" style="color: #ab7a5f;"></i> CodeChef Profile</span>
+              <a href="#" target="_blank" id="self-url-cc" class="auth-link">View Profile</a>
+              <strong>Solved: <span id="self-score-cc">0</span> <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-secondary);">(Rank: <span id="self-rank-cc">N/A</span>)</span></strong>
+            </div>
+
+            <div class="profile-stat-row">
+              <span><i class="fa-brands fa-github" style="color: #f0f6fc;"></i> GitHub Profile</span>
+              <a href="#" target="_blank" id="self-url-gh" class="auth-link">View Profile</a>
+              <strong>Repos: <span id="self-score-gh">0</span> <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-secondary);">(Rank: <span id="self-rank-gh">N/A</span>)</span></strong>
+            </div>
+
+            <div class="profile-stat-row" style="background: linear-gradient(90deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1)); border-color: var(--primary);">
+              <span><i class="fa-solid fa-bolt" style="color: var(--warning);"></i> Code Tracker Index (CTI)</span>
+              <strong>Aggregate score: <span id="self-score-total" style="color: var(--warning); font-size: 1.15rem;">0</span></strong>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Lightweight Footer -->
+  <footer class="app-footer">
+    <div class="footer-content">
+      <span>built by <strong>Wiredlabs</strong></span>
+      <span class="footer-divider">|</span>
+      <span>contact: <strong>+91 9347812241</strong></span>
+      <span class="footer-divider">|</span>
+      <span>insta: <strong><a href="https://instagram.com/wired_labs" target="_blank" style="color: inherit; text-decoration: none;">@wired_labs</a></strong></span>
+    </div>
+  </footer>
+
+  <!-- DIALOG 1: CRAWLER ANIMATION SCREEN -->
+  <dialog id="dialog-crawler" closedby="none">
+    <div class="crawler-loader">
+      <div class="crawler-logo-container">
+        <img src="logo.jpeg" alt="Logo" class="crawler-logo-animated">
+        <div class="crawler-pulse-ring"></div>
+      </div>
+      <div>
+        <h3 id="crawler-title">Initializing API Crawling...</h3>
+        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.25rem;">Connecting to coding platform API headers</p>
+      </div>
+      
+      <div class="crawler-progress-bar-container">
+        <div class="crawler-progress-bar" id="crawler-bar"></div>
+      </div>
+      
+      <div class="crawler-status-logs" id="crawler-logs">
+        <div class="crawler-log-line">Ready. Waiting for profile urls...</div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- DIALOG 2: STUDENT DETAILS OVERLAY POPUP -->
+  <dialog id="dialog-student-detail">
+    <div class="modal-header">
+      <h3 id="detail-modal-title">Student Profile Insights</h3>
+      <button class="modal-close-btn" commandfor="dialog-student-detail" command="close" id="btn-close-detail-modal">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    
+    <div class="student-profile-popup">
+      <!-- Left avatar card -->
+      <div class="profile-avatar-sec">
+        <div class="profile-avatar" id="detail-avatar">AS</div>
+        <h3 class="profile-roll" id="detail-name">-</h3>
+        <div class="profile-roll" id="detail-roll">-</div>
+        <div class="profile-branch" id="detail-branch">-</div>
+        <div class="profile-branch" id="detail-batch-year" style="color: var(--warning); margin-top: 0.25rem;">Batch: -</div>
+        
+        <div class="profile-rank-indicator">
+          <div class="rank-mini-card">
+            <span>Global Rank</span>
+            <strong id="detail-college-rank">#--</strong>
+          </div>
+          <div class="rank-mini-card">
+            <span>Branch Rank</span>
+            <strong id="detail-branch-rank">#--</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right statistics table -->
+      <div class="profile-stats-sec">
+        <div class="profile-stat-row">
+          <span>LeetCode Profile</span>
+          <a href="#" target="_blank" id="detail-url-lc" class="auth-link">Visit Link</a>
+          <strong>Solved: <span id="detail-score-lc">0</span> <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-secondary);">(Rank: <span id="detail-rank-lc">N/A</span>)</span></strong>
+        </div>
+        <div class="profile-stat-row">
+          <span>HackerRank Profile</span>
+          <a href="#" target="_blank" id="detail-url-hr" class="auth-link">Visit Link</a>
+          <strong>Score: <span id="detail-score-hr">0</span> <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-secondary);">(Rank: <span id="detail-rank-hr">N/A</span>)</span></strong>
+        </div>
+        <div class="profile-stat-row">
+          <span>Codeforces Profile</span>
+          <a href="#" target="_blank" id="detail-url-cf" class="auth-link">Visit Link</a>
+          <strong>Rating: <span id="detail-score-cf">0</span> <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-secondary);">(Rank: <span id="detail-rank-cf">N/A</span>)</span></strong>
+        </div>
+        <div class="profile-stat-row">
+          <span>GeeksforGeeks Profile</span>
+          <a href="#" target="_blank" id="detail-url-gfg" class="auth-link">Visit Link</a>
+          <strong>Solved: <span id="detail-score-gfg">0</span> <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-secondary);">(Rank: <span id="detail-rank-gfg">N/A</span>)</span></strong>
+        </div>
+        <div class="profile-stat-row">
+          <span>CodeChef Profile</span>
+          <a href="#" target="_blank" id="detail-url-cc" class="auth-link">Visit Link</a>
+          <strong>Solved: <span id="detail-score-cc">0</span> <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-secondary);">(Rank: <span id="detail-rank-cc">N/A</span>)</span></strong>
+        </div>
+        <div class="profile-stat-row">
+          <span>GitHub Profile</span>
+          <a href="#" target="_blank" id="detail-url-gh" class="auth-link">Visit Link</a>
+          <strong>Repos: <span id="detail-score-gh">0</span> <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-secondary);">(Rank: <span id="detail-rank-gh">N/A</span>)</span></strong>
+        </div>
+        <div class="profile-stat-row" style="background: rgba(245, 158, 11, 0.05);">
+          <span>Code Tracker Rating</span>
+          <strong>Score: <span id="detail-score-total" style="color: var(--warning);">0</span></strong>
+        </div>
+      </div>
+    </div>
+    <!-- Modal Footer Actions (e.g. Delete/Remove Account) -->
+    <div class="modal-footer" id="detail-modal-footer" style="display: none; justify-content: flex-end; margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+      <button class="btn btn-danger" id="btn-delete-student" style="background: #ef4444; color: #fff; border: none; padding: 0.6rem 1.2rem; border-radius: var(--radius-md, 8px); cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-weight: 600; font-size: 0.9rem; transition: background 0.2s;">
+        <i class="fa-solid fa-trash-can"></i> Remove Account
+      </button>
+    </div>
+  </dialog>
+
+  <!-- DIALOG 3: ADMIN EDIT STUDENT OVERLAY POPUP -->
+  <dialog id="dialog-admin-edit-student">
+    <div class="modal-header">
+      <h3>Edit Student Details</h3>
+      <button class="modal-close-btn" commandfor="dialog-admin-edit-student" command="close" id="btn-close-admin-edit-modal" style="background: transparent; border: none; color: var(--text-primary); cursor: pointer; font-size: 1.2rem;">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <form id="form-admin-edit-student" style="padding: 1.5rem;" novalidate>
+      <input type="hidden" id="admin-edit-roll">
+      <div class="form-group" style="margin-bottom: 1rem;">
+        <label for="admin-edit-name" style="display: block; margin-bottom: 0.25rem;">Name</label>
+        <input type="text" id="admin-edit-name" required class="input-text" style="width: 100%; padding: 0.6rem; border-radius: var(--radius-sm); background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); color: var(--text-primary);">
+      </div>
+      <div class="form-group" style="margin-bottom: 1rem;">
+        <label for="admin-edit-email" style="display: block; margin-bottom: 0.25rem;">Gmail Address</label>
+        <input type="email" id="admin-edit-email" required class="input-text" style="width: 100%; padding: 0.6rem; border-radius: var(--radius-sm); background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); color: var(--text-primary);">
+      </div>
+      <div class="form-group" style="margin-bottom: 1rem;">
+        <label for="admin-edit-branch" style="display: block; margin-bottom: 0.25rem;">Academic Branch</label>
+        <select id="admin-edit-branch" required class="filter-select" style="width: 100%;">
+          <option value="CSE">CSE</option>
+          <option value="CSM">CSM</option>
+          <option value="AIML">AIML</option>
+          <option value="MECH">MECH</option>
+          <option value="ECE">ECE</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom: 1rem;">
+        <label for="admin-edit-batch" style="display: block; margin-bottom: 0.25rem;">Graduation Batch Year</label>
+        <select id="admin-edit-batch" required class="filter-select" style="width: 100%;">
+          <option value="2026">2026</option>
+          <option value="2027">2027</option>
+          <option value="2028">2028</option>
+          <option value="2029">2029</option>
+          <option value="2030">2030</option>
+        </select>
+      </div>
+      <button type="submit" class="btn-primary" style="width: 100%; margin-top: 1.5rem;">Save Changes</button>
+    </form>
+  </dialog>
+
+  <!-- DIALOG 4: PRINCIPAL BRANCH SELECTION -->
+  <dialog id="dialog-principal-branch-select" closedby="any" aria-labelledby="branch-select-title">
+    <div class="modal-header">
+      <h3 id="branch-select-title">Select Branch for Analytics</h3>
+      <button class="modal-close-btn" onclick="document.getElementById('dialog-principal-branch-select').close();" style="background: transparent; border: none; color: var(--text-primary); cursor: pointer; font-size: 1.2rem;">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem;">
+      <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">Choose a branch to view detailed statistics, charts, and student performance metrics:</p>
+      <div class="branch-select-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1rem;">
+        <button class="branch-select-btn" data-branch="CSE">
+          <i class="fa-solid fa-laptop-code"></i>
+          <span>CSE</span>
+        </button>
+        <button class="branch-select-btn" data-branch="CSM">
+          <i class="fa-solid fa-brain"></i>
+          <span>CSM</span>
+        </button>
+        <button class="branch-select-btn" data-branch="AIML">
+          <i class="fa-solid fa-robot"></i>
+          <span>AIML</span>
+        </button>
+        <button class="branch-select-btn" data-branch="MECH">
+          <i class="fa-solid fa-gears"></i>
+          <span>MECH</span>
+        </button>
+        <button class="branch-select-btn" data-branch="ECE">
+          <i class="fa-solid fa-microchip"></i>
+          <span>ECE</span>
+        </button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- DIALOG 5: CHANGE PASSWORD MODAL -->
+  <dialog id="dialog-change-password" closedby="any" aria-labelledby="change-password-title">
+    <div class="modal-header">
+      <h3 id="change-password-title">Change Password</h3>
+      <button class="modal-close-btn" onclick="document.getElementById('dialog-change-password').close();" style="background: transparent; border: none; color: var(--text-primary); cursor: pointer; font-size: 1.2rem;">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <form id="form-change-password" style="padding: 1rem 1.5rem 0 1.5rem;" novalidate>
+      <div class="form-group" style="margin-bottom: 1.25rem;">
+        <label for="change-pwd-current" style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--text-secondary);">Current Password</label>
+        <input type="password" id="change-pwd-current" required class="input-text" placeholder="Enter current password">
+        <div class="error-msg" id="change-pwd-current-error" style="margin-top: 0.25rem; font-size: 0.8rem; color: #ef4444; display: none;">
+          <span>❌</span> Current password is required.
+        </div>
+      </div>
+      
+      <div class="form-group" style="margin-bottom: 1.25rem;">
+        <label for="change-pwd-new" style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--text-secondary);">New Password</label>
+        <input type="password" id="change-pwd-new" required class="input-text" placeholder="Enter new password">
+        <div class="error-msg" id="change-pwd-new-error" style="margin-top: 0.25rem; font-size: 0.8rem; color: #ef4444; display: none;">
+          <span>❌</span> New password is required.
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 1.5rem;">
+        <label for="change-pwd-confirm" style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--text-secondary);">Confirm New Password</label>
+        <input type="password" id="change-pwd-confirm" required class="input-text" placeholder="Confirm new password">
+        <div class="error-msg" id="change-pwd-confirm-error" style="margin-top: 0.25rem; font-size: 0.8rem; color: #ef4444; display: none;">
+          <span>❌</span> Passwords do not match.
+        </div>
+      </div>
+
+      <button type="submit" class="btn-primary" style="width: 100%; padding: 0.75rem;">Update Password</button>
+    </form>
+  </dialog>
+
+  <!-- DIALOG 6: EDIT PROFILE MODAL -->
+  <dialog id="dialog-edit-profile" closedby="any" aria-labelledby="edit-profile-modal-title">
+    <div class="modal-header">
+      <h3 id="edit-profile-modal-title"><i class="fa-solid fa-user-pen" style="color: var(--primary);"></i> Edit Profile Links</h3>
+      <button class="modal-close-btn" onclick="document.getElementById('dialog-edit-profile').close();" style="background: transparent; border: none; color: var(--text-primary); cursor: pointer; font-size: 1.2rem;">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div class="modal-body" style="padding: 1.5rem 1.5rem 0 1.5rem;">
+      <form id="form-self-update-links" novalidate>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+          <div class="form-group">
+            <label for="self-edit-leetcode">LeetCode Profile URL</label>
+            <input type="url" id="self-edit-leetcode" class="input-text" placeholder="https://leetcode.com/u/username" style="width: 100%;">
+            <div class="error-msg" id="self-edit-leetcode-error" style="display: none;">❌ Invalid LeetCode URL</div>
+          </div>
+          <div class="form-group">
+            <label for="self-edit-hackerrank">HackerRank Profile URL</label>
+            <input type="url" id="self-edit-hackerrank" class="input-text" placeholder="https://hackerrank.com/profile/username" style="width: 100%;">
+            <div class="error-msg" id="self-edit-hackerrank-error" style="display: none;">❌ Invalid HackerRank URL</div>
+          </div>
+          <div class="form-group">
+            <label for="self-edit-codeforces">Codeforces Profile URL</label>
+            <input type="url" id="self-edit-codeforces" class="input-text" placeholder="https://codeforces.com/profile/username" style="width: 100%;">
+            <div class="error-msg" id="self-edit-codeforces-error" style="display: none;">❌ Invalid Codeforces URL</div>
+          </div>
+          <div class="form-group">
+            <label for="self-edit-gfg">GeeksforGeeks Profile URL</label>
+            <input type="url" id="self-edit-gfg" class="input-text" placeholder="https://geeksforgeeks.org/user/username" style="width: 100%;">
+            <div class="error-msg" id="self-edit-gfg-error" style="display: none;">❌ Invalid GeeksforGeeks URL</div>
+          </div>
+          <div class="form-group">
+            <label for="self-edit-codechef">CodeChef Profile URL</label>
+            <input type="url" id="self-edit-codechef" class="input-text" placeholder="https://codechef.com/users/username" style="width: 100%;">
+            <div class="error-msg" id="self-edit-codechef-error" style="display: none;">❌ Invalid CodeChef URL</div>
+          </div>
+          <div class="form-group">
+            <label for="self-edit-github">GitHub Profile URL</label>
+            <input type="url" id="self-edit-github" class="input-text" placeholder="https://github.com/username" style="width: 100%;">
+            <div class="error-msg" id="self-edit-github-error" style="display: none;">❌ Invalid GitHub URL</div>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem;">Save & Start Sync Crawl</button>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- DIALOG 7: NEW ANNOUNCEMENT POPUP -->
+  <dialog id="dialog-announcement-popup" closedby="none" style="width: 90%; max-width: 520px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(15, 23, 42, 0.96); backdrop-filter: blur(12px); color: #fff; padding: 0; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+    <div class="modal-header" style="background: rgba(245, 158, 11, 0.1); border-bottom: 1px solid rgba(255,255,255,0.08); padding: 1.2rem; display: flex; justify-content: space-between; align-items: center;">
+      <h3 style="margin: 0; display: flex; align-items: center; gap: 0.6rem; color: #f59e0b; font-size: 1.15rem; font-weight: 700;">
+        <i class="fa-solid fa-bullhorn animate-bounce"></i> New Notice & Announcement
+      </h3>
+    </div>
+    <div class="modal-body" style="padding: 1.5rem; max-height: 380px; overflow-y: auto;">
+      <div id="unread-notices-container" style="display: flex; flex-direction: column; gap: 1.2rem;">
+        <!-- Dynamically filled -->
+      </div>
+    </div>
+    <div class="modal-footer" style="padding: 1.2rem 1.5rem; border-top: 1px solid rgba(255, 255, 255, 0.08); display: flex; justify-content: flex-end; background: rgba(0, 0, 0, 0.2); border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+      <button id="btn-acknowledge-notices" style="padding: 0.7rem 1.8rem; background: linear-gradient(135deg, #f59e0b, #d97706); border: none; color: white; font-weight: 700; border-radius: 8px; cursor: pointer; transition: all 0.2s; font-family: inherit; font-size: 0.9rem; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);">
+        Got it, thank you!
+      </button>
+    </div>
+  </dialog>
+
+  <!-- DIALOG 8: ADMIN RECOVERY EMAIL SETUP -->
+  <dialog id="dialog-admin-email-setup" closedby="none" aria-labelledby="admin-email-setup-title">
+    <div class="modal-header">
+      <h3 id="admin-email-setup-title"><i class="fa-solid fa-envelope-open-text" style="color: var(--primary);"></i> Setup Recovery Email</h3>
+    </div>
+    <div class="modal-body" style="padding: 1.5rem 1.5rem 0 1.5rem;">
+      <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.25rem; line-height: 1.5;">
+        Since you are logging in as an Administrative User (HOD / Principal / Admin), please register your personal work Gmail address. This email will be used for automated password recovery.
+      </p>
+      <form id="form-admin-email-setup" novalidate>
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+          <label for="admin-setup-email">Recovery Gmail Address</label>
+          <input type="email" id="admin-setup-email" required class="input-text" placeholder="username@gmail.com" style="width: 100%;">
+          <div class="error-msg" id="admin-setup-email-error" style="display: none;">
+            <span>❌</span> Please enter a valid Gmail address ending with @gmail.com
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem;">Save & Continue</button>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- DIALOG 9: ADMIN EDIT ACCOUNT PASSWORD -->
+  <dialog id="dialog-admin-edit-password" closedby="any" aria-labelledby="admin-edit-password-title">
+    <div class="modal-header">
+      <h3 id="admin-edit-password-title"><i class="fa-solid fa-key" style="color: var(--warning);"></i> Edit Account Password</h3>
+      <button class="modal-close-btn" onclick="document.getElementById('dialog-admin-edit-password').close();" style="background: transparent; border: none; color: var(--text-primary); cursor: pointer; font-size: 1.2rem;">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div class="modal-body" style="padding: 1.5rem 1.5rem 0 1.5rem;">
+      <form id="form-admin-edit-password" novalidate>
+        <input type="hidden" id="admin-edit-pwd-username">
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label>Target Account Username</label>
+          <input type="text" id="admin-edit-pwd-display-user" disabled class="input-text" style="width: 100%; opacity: 0.7;">
+        </div>
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+          <label for="admin-edit-pwd-new">New Password</label>
+          <input type="password" id="admin-edit-pwd-new" required class="input-text" placeholder="Enter new password (min 6 chars)" style="width: 100%;">
+          <div class="error-msg" id="admin-edit-pwd-new-error" style="display: none;">
+            <span>❌</span> Password must be at least 6 characters.
+          </div>
+        </div>
+        <button type="submit" class="btn btn-warning" style="width: 100%; padding: 0.75rem;">Update Password</button>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Local Script Logic -->
+  <script src="app.js" type="module"></script>
+</body>
+</html>
