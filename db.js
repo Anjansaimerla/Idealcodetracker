@@ -25,36 +25,315 @@ const DEFAULT_FALLBACK_DATA = {
   activity_logs: []
 };
 
-let pool = null;
+let mysqlPool = null;
+let pgPool = null;
+let dbType = 'mysql'; // 'mysql' | 'postgres'
 let isFallbackMode = false;
+
+// ANSI SQL to Postgres placeholder translator
+function translateQuery(sql) {
+  let index = 1;
+  return sql.replace(/\?/g, () => `$${index++}`);
+}
+
+async function initPostgresTables() {
+  const queries = [
+    `CREATE TABLE IF NOT EXISTS users (
+      username VARCHAR(50) PRIMARY KEY,
+      password VARCHAR(255) NOT NULL,
+      role VARCHAR(50) NOT NULL,
+      name VARCHAR(100) NOT NULL,
+      branch VARCHAR(10) NULL,
+      email VARCHAR(100) NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS student_profiles (
+      roll VARCHAR(50) PRIMARY KEY REFERENCES users(username) ON DELETE CASCADE,
+      email VARCHAR(100) NOT NULL,
+      leetcode_url VARCHAR(255) NULL,
+      hackerrank_url VARCHAR(255) NULL,
+      codeforces_url VARCHAR(255) NULL,
+      gfg_url VARCHAR(255) NULL,
+      codechef_url VARCHAR(255) NULL,
+      github_url VARCHAR(255) NULL,
+      leetcode_solved INT DEFAULT 0,
+      leetcode_rank VARCHAR(50) DEFAULT 'N/A',
+      hackerrank_score INT DEFAULT 0,
+      hackerrank_rank VARCHAR(50) DEFAULT 'N/A',
+      codeforces_rating INT DEFAULT 0,
+      codeforces_rank VARCHAR(50) DEFAULT 'N/A',
+      gfg_solved INT DEFAULT 0,
+      gfg_rank VARCHAR(50) DEFAULT 'N/A',
+      codechef_solved INT DEFAULT 0,
+      codechef_rank VARCHAR(50) DEFAULT 'N/A',
+      github_repos INT DEFAULT 0,
+      github_rank VARCHAR(50) DEFAULT 'N/A',
+      total_score INT DEFAULT 0,
+      batch_year INT DEFAULT 2026
+    )`,
+    `CREATE TABLE IF NOT EXISTS audit_logs (
+      id SERIAL PRIMARY KEY,
+      username VARCHAR(50) NOT NULL,
+      action VARCHAR(255) NOT NULL,
+      timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS notices (
+      id SERIAL PRIMARY KEY,
+      title VARCHAR(255) NOT NULL,
+      message TEXT NOT NULL,
+      priority VARCHAR(50) NOT NULL DEFAULT 'normal',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS assignments (
+      id SERIAL PRIMARY KEY,
+      title VARCHAR(255) NOT NULL,
+      description TEXT NOT NULL,
+      deadline VARCHAR(100) NOT NULL,
+      target_batches VARCHAR(255) NOT NULL,
+      target_branches VARCHAR(255) NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS activity_logs (
+      id SERIAL PRIMARY KEY,
+      username VARCHAR(50) NOT NULL,
+      action VARCHAR(255) NOT NULL,
+      timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`
+  ];
+
+  for (const q of queries) {
+    await pgPool.query(q);
+  }
+
+  const seedQuery = `
+    INSERT INTO users (username, password, role, name, branch) VALUES
+    ('admin@ideal.edu.in', 'admin123', 'admin', 'System Admin', NULL),
+    ('principal@ideal.edu.in', 'principal123', 'principal', 'Principal Office', NULL),
+    ('hod.cse@ideal.edu.in', 'hod.cse123', 'hod', 'CSE HOD', 'CSE'),
+    ('hod.csm@ideal.edu.in', 'hod.csm123', 'hod', 'CSM HOD', 'CSM'),
+    ('hod.aiml@ideal.edu.in', 'hod.aiml123', 'hod', 'AIML HOD', 'AIML'),
+    ('hod.mech@ideal.edu.in', 'hod.mech123', 'hod', 'MECH HOD', 'MECH'),
+    ('hod.ece@ideal.edu.in', 'hod.ece123', 'hod', 'ECE HOD', 'ECE')
+    ON CONFLICT (username) DO UPDATE SET password = EXCLUDED.password
+  `;
+  await pgPool.query(seedQuery);
+}
+
+async function initMysqlTables(conn) {
+  const queries = [
+    `CREATE TABLE IF NOT EXISTS users (
+      username VARCHAR(50) PRIMARY KEY,
+      password VARCHAR(255) NOT NULL,
+      role ENUM('student', 'hod', 'principal', 'admin') NOT NULL,
+      name VARCHAR(100) NOT NULL,
+      branch VARCHAR(10) NULL,
+      email VARCHAR(100) NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS student_profiles (
+      roll VARCHAR(50) PRIMARY KEY,
+      email VARCHAR(100) NOT NULL,
+      leetcode_url VARCHAR(255),
+      hackerrank_url VARCHAR(255),
+      codeforces_url VARCHAR(255),
+      gfg_url VARCHAR(255),
+      codechef_url VARCHAR(255),
+      github_url VARCHAR(255),
+      leetcode_solved INT DEFAULT 0,
+      leetcode_rank VARCHAR(50) DEFAULT 'N/A',
+      hackerrank_score INT DEFAULT 0,
+      hackerrank_rank VARCHAR(50) DEFAULT 'N/A',
+      codeforces_rating INT DEFAULT 0,
+      codeforces_rank VARCHAR(50) DEFAULT 'N/A',
+      gfg_solved INT DEFAULT 0,
+      gfg_rank VARCHAR(50) DEFAULT 'N/A',
+      codechef_solved INT DEFAULT 0,
+      codechef_rank VARCHAR(50) DEFAULT 'N/A',
+      github_repos INT DEFAULT 0,
+      github_rank VARCHAR(50) DEFAULT 'N/A',
+      total_score INT DEFAULT 0,
+      batch_year INT DEFAULT 2026,
+      FOREIGN KEY (roll) REFERENCES users(username) ON DELETE CASCADE
+    )`,
+    `CREATE TABLE IF NOT EXISTS audit_logs (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      username VARCHAR(50) NOT NULL,
+      action VARCHAR(255) NOT NULL,
+      timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS notices (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      title VARCHAR(255) NOT NULL,
+      message TEXT NOT NULL,
+      priority ENUM('normal', 'imp', 'urgent') NOT NULL DEFAULT 'normal',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS assignments (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      title VARCHAR(255) NOT NULL,
+      description TEXT NOT NULL,
+      deadline VARCHAR(100) NOT NULL,
+      target_batches VARCHAR(255) NOT NULL,
+      target_branches VARCHAR(255) NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS activity_logs (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      username VARCHAR(50) NOT NULL,
+      action VARCHAR(255) NOT NULL,
+      timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`
+  ];
+
+  for (const q of queries) {
+    await conn.query(q);
+  }
+
+  const seedQuery = `
+    INSERT INTO users (username, password, role, name, branch) VALUES
+    ('admin@ideal.edu.in', 'admin123', 'admin', 'System Admin', NULL),
+    ('principal@ideal.edu.in', 'principal123', 'principal', 'Principal Office', NULL),
+    ('hod.cse@ideal.edu.in', 'hod.cse123', 'hod', 'CSE HOD', 'CSE'),
+    ('hod.csm@ideal.edu.in', 'hod.csm123', 'hod', 'CSM HOD', 'CSM'),
+    ('hod.aiml@ideal.edu.in', 'hod.aiml123', 'hod', 'AIML HOD', 'AIML'),
+    ('hod.mech@ideal.edu.in', 'hod.mech123', 'hod', 'MECH HOD', 'MECH'),
+    ('hod.ece@ideal.edu.in', 'hod.ece123', 'hod', 'ECE HOD', 'ECE')
+    ON DUPLICATE KEY UPDATE password=VALUES(password)
+  `;
+  await conn.query(seedQuery);
+}
+
+const pool = {
+  query: async (sql, params) => {
+    if (dbType === 'postgres') {
+      const pgSql = translateQuery(sql);
+      const result = await pgPool.query(pgSql, params);
+      const isSelect = sql.trim().toLowerCase().startsWith('select');
+      if (isSelect) {
+        return [result.rows];
+      } else {
+        return [{ affectedRows: result.rowCount }];
+      }
+    } else {
+      return await mysqlPool.query(sql, params);
+    }
+  },
+  getConnection: async () => {
+    if (dbType === 'postgres') {
+      const client = await pgPool.connect();
+      return {
+        query: async (sql, params) => {
+          const pgSql = translateQuery(sql);
+          const result = await client.query(pgSql, params);
+          const isSelect = sql.trim().toLowerCase().startsWith('select');
+          if (isSelect) {
+            return [result.rows];
+          } else {
+            return [{ affectedRows: result.rowCount }];
+          }
+        },
+        beginTransaction: async () => {
+          await client.query('BEGIN');
+        },
+        commit: async () => {
+          await client.query('COMMIT');
+        },
+        rollback: async () => {
+          await client.query('ROLLBACK');
+        },
+        release: () => {
+          client.release();
+        }
+      };
+    } else {
+      const conn = await mysqlPool.getConnection();
+      return {
+        query: async (sql, params) => {
+          return await conn.query(sql, params);
+        },
+        beginTransaction: async () => {
+          await conn.beginTransaction();
+        },
+        commit: async () => {
+          await conn.commit();
+        },
+        rollback: async () => {
+          await conn.rollback();
+        },
+        release: () => {
+          conn.release();
+        }
+      };
+    }
+  }
+};
 
 // Initialize Database Connection
 async function initDb() {
-  const dbConfig = {
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME || 'code_tracker',
-    port: parseInt(process.env.DB_PORT || '3306')
-  };
+  const hasPgUrl = !!process.env.DATABASE_URL;
+  const isPgType = process.env.DB_TYPE === 'postgres' || process.env.DB_TYPE === 'postgresql';
 
-  if (!dbConfig.user) {
-    console.warn('\x1b[33m%s\x1b[0m', 'Warning: DB_USER is not set in environment variables. Falling back to local JSON database.');
-    setupFallbackFile();
-    isFallbackMode = true;
-    return;
-  }
+  if (hasPgUrl || isPgType) {
+    dbType = 'postgres';
+    console.log('Connecting to PostgreSQL database...');
+    try {
+      const { Pool } = require('pg');
+      const pgConfig = {
+        connectionString: process.env.DATABASE_URL,
+        ssl: process.env.DB_SSL === 'false' ? false : { rejectUnauthorized: false }
+      };
 
-  try {
-    pool = mysql.createPool(dbConfig);
-    const conn = await pool.getConnection();
-    console.log('\x1b[32m%s\x1b[0m', 'Success: Connected to MySQL database.');
-    conn.release();
-  } catch (err) {
-    console.warn('\x1b[31m%s\x1b[0m', 'Error: Could not connect to MySQL database:', err.message);
-    console.warn('\x1b[33m%s\x1b[0m', 'Falling back to local JSON database storage.');
-    setupFallbackFile();
-    isFallbackMode = true;
+      if (!pgConfig.connectionString) {
+        pgConfig.host = process.env.DB_HOST || 'localhost';
+        pgConfig.user = process.env.DB_USER;
+        pgConfig.password = process.env.DB_PASSWORD;
+        pgConfig.database = process.env.DB_NAME || 'code_tracker';
+        pgConfig.port = parseInt(process.env.DB_PORT || '5432');
+      }
+
+      pgPool = new Pool(pgConfig);
+      const conn = await pgPool.connect();
+      console.log('\x1b[32m%s\x1b[0m', 'Success: Connected to PostgreSQL database.');
+      conn.release();
+
+      await initPostgresTables();
+      console.log('\x1b[32m%s\x1b[0m', 'Success: PostgreSQL tables initialized/verified.');
+    } catch (err) {
+      console.warn('\x1b[31m%s\x1b[0m', 'Error: Could not connect to PostgreSQL database:', err.message);
+      console.warn('\x1b[33m%s\x1b[0m', 'Falling back to local JSON database storage.');
+      setupFallbackFile();
+      isFallbackMode = true;
+    }
+  } else {
+    dbType = 'mysql';
+    const dbConfig = {
+      host: process.env.DB_HOST || 'localhost',
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME || 'code_tracker',
+      port: parseInt(process.env.DB_PORT || '3306')
+    };
+
+    if (!dbConfig.user) {
+      console.warn('\x1b[33m%s\x1b[0m', 'Warning: DB_USER / DATABASE_URL is not set in environment variables. Falling back to local JSON database.');
+      setupFallbackFile();
+      isFallbackMode = true;
+      return;
+    }
+
+    try {
+      mysqlPool = mysql.createPool(dbConfig);
+      const conn = await mysqlPool.getConnection();
+      console.log('\x1b[32m%s\x1b[0m', 'Success: Connected to MySQL database.');
+      
+      await initMysqlTables(conn);
+      console.log('\x1b[32m%s\x1b[0m', 'Success: MySQL tables initialized/verified.');
+      
+      conn.release();
+    } catch (err) {
+      console.warn('\x1b[31m%s\x1b[0m', 'Error: Could not connect to MySQL database:', err.message);
+      console.warn('\x1b[33m%s\x1b[0m', 'Falling back to local JSON database storage.');
+      setupFallbackFile();
+      isFallbackMode = true;
+    }
   }
 }
 
