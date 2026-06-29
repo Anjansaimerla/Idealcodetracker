@@ -1,6 +1,7 @@
 {
   "version": 2,
   "builds": [
+    { "src": "api/*.js", "use": "@vercel/node" },
     { "src": "*.html", "use": "@vercel/static" },
     { "src": "*.css", "use": "@vercel/static" },
     { "src": "*.js", "use": "@vercel/static" },
@@ -10,7 +11,14 @@
     { "src": "*.ico", "use": "@vercel/static" }
   ],
   "routes": [
+    { "src": "/api/cron-trigger", "dest": "api/cron-trigger.js" },
     { "src": "/", "dest": "/index.html" },
     { "src": "/(.*)", "dest": "/$1" }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron-trigger",
+      "schedule": "30 15 * * *"
+    }
   ]
 }
