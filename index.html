@@ -34,19 +34,32 @@
         <button class="floating-widget-btn" id="btn-widget-compare" data-target="panel-compare">
           <i class="fa-solid fa-code-compare"></i> Compare
         </button>
+        <button class="floating-widget-btn" id="btn-widget-download">
+          <i class="fa-solid fa-file-csv"></i> Export
+        </button>
         <button class="floating-widget-btn" id="btn-widget-analytics" data-target="panel-analytics" style="display: none;">
           <i class="fa-solid fa-chart-pie"></i> Analytics
         </button>
         <button class="floating-widget-btn" id="btn-widget-profile" style="display: none;">
           <i class="fa-solid fa-circle-user"></i> My Profile
         </button>
-        <button class="floating-widget-btn" id="btn-widget-download">
-          <i class="fa-solid fa-file-csv"></i> Download CSV
+        <button class="floating-widget-btn" id="btn-widget-internships" style="display: none;">
+          <i class="fa-solid fa-briefcase"></i> Internships
+        </button>
+      </div>
+
+      <!-- IC (Internship Coordinator) Widgets -->
+      <div class="nav-menu-bar" id="ic-widgets" style="display: none;">
+        <button class="floating-widget-btn active" id="btn-ic-publish">
+          <i class="fa-solid fa-upload"></i> Publish
+        </button>
+        <button class="floating-widget-btn" id="btn-ic-overview">
+          <i class="fa-solid fa-table-list"></i> Overview
         </button>
       </div>
 
       <!-- Admin Navigation Widgets -->
-      <div class="nav-menu-bar" id="admin-widgets" style="display: none; gap: 0.5rem;">
+      <div class="nav-menu-bar" id="admin-widgets" style="display: none;">
         <button class="floating-widget-btn active" id="btn-admin-dashboard" data-panel="admin-panel-dashboard">
           <i class="fa-solid fa-gauge"></i> Dashboard
         </button>
@@ -76,6 +89,9 @@
         </button>
         <button class="floating-widget-btn" id="btn-admin-assignments" data-panel="admin-panel-assignments">
           <i class="fa-solid fa-file-signature"></i> Assignments
+        </button>
+        <button class="floating-widget-btn" id="btn-admin-internships" data-panel="admin-panel-internships">
+          <i class="fa-solid fa-briefcase"></i> Internships
         </button>
         <button class="floating-widget-btn" id="btn-admin-settings" data-panel="admin-panel-settings">
           <i class="fa-solid fa-sliders"></i> Settings
@@ -137,16 +153,7 @@
                 </div>
               </div>
 
-              <div class="form-group" id="login-batch-year-group">
-                <label for="login-batch-year">Batch Year</label>
-                <select id="login-batch-year" required>
-                  <option value="2026">2026</option>
-                  <option value="2027">2027</option>
-                  <option value="2028">2028</option>
-                  <option value="2029">2029</option>
-                  <option value="2030">2030</option>
-                </select>
-              </div>
+
 
               <button type="submit" class="btn-primary">Sign In</button>
             </form>
@@ -190,12 +197,24 @@
               
               <div class="form-group">
                 <label for="reg-email">Gmail Address</label>
-                <div class="input-with-icon">
-                  <i class="fa-solid fa-envelope"></i>
-                  <input type="email" id="reg-email" required placeholder="name@gmail.com">
+                <div class="otp-verify-row">
+                  <div class="input-with-icon" style="flex:1;">
+                    <i class="fa-solid fa-envelope"></i>
+                    <input type="email" id="reg-email" required placeholder="name@gmail.com">
+                  </div>
+                  <button type="button" class="btn-otp-send" id="btn-send-otp">Send OTP</button>
                 </div>
+                <div class="otp-input-row" id="otp-input-row">
+                  <input type="text" id="otp-code" class="input-text" maxlength="6" placeholder="6-digit OTP" autocomplete="one-time-code" style="letter-spacing:6px;font-size:1.1rem;font-weight:700;text-align:center;">
+                  <button type="button" class="btn-otp-verify" id="btn-verify-otp">Verify</button>
+                </div>
+                <div class="otp-verified-badge" id="otp-verified-badge"><i class="fa-solid fa-circle-check"></i> Email Verified</div>
+                <div class="otp-timer" id="otp-timer" style="display:none;"></div>
                 <div class="error-msg" id="reg-email-error">
                   <span>❌</span> Please enter a valid Gmail address (must end with @gmail.com).
+                </div>
+                <div class="error-msg" id="reg-otp-error" style="display:none;">
+                  <span>❌</span> Please verify your Gmail address via OTP before continuing.
                 </div>
               </div>
 
@@ -456,6 +475,7 @@
                 <th>GFG</th>
                 <th>CodeChef</th>
                 <th>GitHub</th>
+                <th>Internships</th>
               </tr>
             </thead>
             <tbody id="tbody-students">
@@ -635,6 +655,7 @@
                 <th>GFG</th>
                 <th>CodeChef</th>
                 <th>GitHub</th>
+                <th>Internships</th>
               </tr>
             </thead>
             <tbody id="table-principal-branch-students">
@@ -1119,6 +1140,7 @@
                 <select id="access-role" class="filter-select" style="width: 100%;">
                   <option value="hod">HOD (Department level read/export)</option>
                   <option value="principal">Principal (Global college view/export)</option>
+                  <option value="internship_coordinator">Internship Coordinator (Publish & overview internships)</option>
                   <option value="admin">System Admin (Full edit/access control)</option>
                 </select>
               </div>
@@ -1270,6 +1292,46 @@
           </div>
         </div>
 
+        <!-- 12. ADMIN INTERNSHIPS --></p>
+        <div class="admin-panel" id="admin-panel-internships" style="display: none;">
+          <div class="panel-header">
+            <h2><i class="fa-solid fa-briefcase"></i> Internship Submissions Management</h2>
+          </div>
+          <div class="glass-panel" style="margin-top:1rem;padding:1.5rem;">
+            <h3 style="margin-bottom:1rem;"><i class="fa-solid fa-list-check" style="color:var(--success);"></i> All Published Titles</h3>
+            <div id="admin-internship-titles-list" style="margin-bottom:2rem;">
+              <div class="no-internships-msg">Loading...</div>
+            </div>
+            <h3 style="margin-bottom:1rem;border-top:1px solid var(--border-color);padding-top:1.5rem;"><i class="fa-solid fa-table" style="color:var(--primary);"></i> All Student Submissions</h3>
+            <div class="ic-overview-controls">
+              <select class="filter-select" id="admin-intern-filter-branch">
+                <option value="ALL">All Branches</option>
+                <option value="CSE">CSE</option><option value="CSM">CSM</option>
+                <option value="AIML">AIML</option><option value="MECH">MECH</option>
+                <option value="ECE">ECE</option>
+              </select>
+              <select class="filter-select" id="admin-intern-filter-batch">
+                <option value="ALL">All Batches</option>
+                <option value="2026">2026</option><option value="2027">2027</option>
+                <option value="2028">2028</option><option value="2029">2029</option>
+                <option value="2030">2030</option>
+              </select>
+              <input type="text" id="admin-intern-search" class="input-text" placeholder="Search student..." style="min-width:180px;">
+            </div>
+            <div class="table-container" style="box-shadow:none;border:none;padding:0;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Roll</th><th>Name</th><th>Branch</th><th>Batch</th>
+                    <th>Title</th><th>Internships Done</th><th>Submitted At</th><th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-internship-submissions-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
       </div>
     </section>
 
@@ -1354,6 +1416,171 @@
           </div>
         </div>
 
+      </div>
+    </section>
+
+    <!-- INTERNSHIP COORDINATOR VIEW -->
+    <section class="view-container" id="view-ic">
+      <div class="ic-wrapper">
+        <!-- IC Publish Panel -->
+        <div class="ic-panel active" id="ic-panel-publish">
+          <div class="panel-header">
+            <h2><i class="fa-solid fa-upload"></i> Publish Internship Details</h2>
+          </div>
+          <div class="ic-publish-layout">
+            <!-- Left: Student List Preview -->
+            <div class="glass-panel ic-student-list-panel">
+              <h3><i class="fa-solid fa-users" style="color:var(--primary);"></i> Enrolled Students</h3>
+              <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.75rem;">
+                <select class="filter-select" id="ic-filter-branch" style="flex:1;min-width:100px;">
+                  <option value="ALL">All Branches</option>
+                  <option value="CSE">CSE</option><option value="CSM">CSM</option>
+                  <option value="AIML">AIML</option><option value="MECH">MECH</option>
+                  <option value="ECE">ECE</option>
+                </select>
+                <select class="filter-select" id="ic-filter-batch" style="flex:1;min-width:100px;">
+                  <option value="ALL">All Batches</option>
+                  <option value="2026">2026</option><option value="2027">2027</option>
+                  <option value="2028">2028</option><option value="2029">2029</option>
+                  <option value="2030">2030</option>
+                </select>
+              </div>
+              <div class="ic-student-list" id="ic-student-list">
+                <div class="no-internships-msg">Loading student list...</div>
+              </div>
+              <div style="margin-top:0.75rem;font-size:0.8rem;color:var(--text-secondary);" id="ic-student-count">0 students</div>
+            </div>
+
+            <!-- Right: Title Builder + Published Log -->
+            <div class="ic-publish-right">
+              <!-- Builder form -->
+              <div class="glass-panel ic-title-builder">
+                <h3 style="margin-bottom:1rem;"><i class="fa-solid fa-pen-ruler" style="color:var(--primary);"></i> Create Internship Title</h3>
+                <div class="ic-title-input-row">
+                  <input type="text" id="ic-new-title" placeholder="e.g. Summer Internship 2025 - CSE" maxlength="120">
+                </div>
+                <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.75rem;">Add individual internship company/project names:</p>
+                <div class="ic-items-list" id="ic-draft-items-list"></div>
+                <div class="ic-add-item-row">
+                  <input type="text" id="ic-new-item-input" placeholder="e.g. Google SWE Internship" maxlength="100">
+                  <button class="btn-ic-add-item" id="btn-ic-add-item" type="button">+</button>
+                </div>
+                <div class="ic-publish-filters" style="display:flex;gap:1rem;margin-bottom:1rem;position:relative;z-index:20;">
+                  <div class="custom-multiselect" id="ic-pub-branch-container">
+                    <div class="multiselect-select-box" onclick="toggleMultiselect('ic-pub-branch-options', event)">
+                      <span id="ic-pub-branch-label">All Branches</span>
+                      <i class="fa-solid fa-chevron-down" style="font-size:0.75rem;"></i>
+                    </div>
+                    <div class="multiselect-options" id="ic-pub-branch-options">
+                      <label><input type="checkbox" value="ALL" checked onchange="handleMultiselectAll(this, 'ic-pub-branch-options', 'ic-pub-branch-label', 'Branches')"> All Branches</label>
+                      <label><input type="checkbox" value="CSE" onchange="handleMultiselectChange('ic-pub-branch-options', 'ic-pub-branch-label', 'Branches')"> CSE</label>
+                      <label><input type="checkbox" value="CSM" onchange="handleMultiselectChange('ic-pub-branch-options', 'ic-pub-branch-label', 'Branches')"> CSM</label>
+                      <label><input type="checkbox" value="AIML" onchange="handleMultiselectChange('ic-pub-branch-options', 'ic-pub-branch-label', 'Branches')"> AIML</label>
+                      <label><input type="checkbox" value="MECH" onchange="handleMultiselectChange('ic-pub-branch-options', 'ic-pub-branch-label', 'Branches')"> MECH</label>
+                      <label><input type="checkbox" value="ECE" onchange="handleMultiselectChange('ic-pub-branch-options', 'ic-pub-branch-label', 'Branches')"> ECE</label>
+                    </div>
+                  </div>
+                  <div class="custom-multiselect" id="ic-pub-batch-container">
+                    <div class="multiselect-select-box" onclick="toggleMultiselect('ic-pub-batch-options', event)">
+                      <span id="ic-pub-batch-label">All Batches</span>
+                      <i class="fa-solid fa-chevron-down" style="font-size:0.75rem;"></i>
+                    </div>
+                    <div class="multiselect-options" id="ic-pub-batch-options">
+                      <label><input type="checkbox" value="ALL" checked onchange="handleMultiselectAll(this, 'ic-pub-batch-options', 'ic-pub-batch-label', 'Batches')"> All Batches</label>
+                      <label><input type="checkbox" value="2026" onchange="handleMultiselectChange('ic-pub-batch-options', 'ic-pub-batch-label', 'Batches')"> 2026</label>
+                      <label><input type="checkbox" value="2027" onchange="handleMultiselectChange('ic-pub-batch-options', 'ic-pub-batch-label', 'Batches')"> 2027</label>
+                      <label><input type="checkbox" value="2028" onchange="handleMultiselectChange('ic-pub-batch-options', 'ic-pub-batch-label', 'Batches')"> 2028</label>
+                      <label><input type="checkbox" value="2029" onchange="handleMultiselectChange('ic-pub-batch-options', 'ic-pub-batch-label', 'Batches')"> 2029</label>
+                      <label><input type="checkbox" value="2030" onchange="handleMultiselectChange('ic-pub-batch-options', 'ic-pub-batch-label', 'Batches')"> 2030</label>
+                    </div>
+                  </div>
+                </div>
+                <button class="btn-ic-publish" id="btn-ic-publish-title" type="button">
+                  <i class="fa-solid fa-paper-plane"></i> Publish to Students
+                </button>
+              </div>
+              <!-- Published Titles Log -->
+              <div class="glass-panel ic-published-log">
+                <h3 style="margin-bottom:1rem;"><i class="fa-solid fa-list-check" style="color:var(--success);"></i> Published Titles</h3>
+                <div id="ic-published-titles-list">
+                  <div class="no-internships-msg">No titles published yet.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- IC Overview Panel -->
+        <div class="ic-panel" id="ic-panel-overview">
+          <div class="panel-header">
+            <h2><i class="fa-solid fa-table-list"></i> Student Internship Submissions Overview</h2>
+          </div>
+          <div class="ic-overview-controls">
+            <select class="filter-select" id="ic-ov-filter-branch">
+              <option value="ALL">All Branches</option>
+              <option value="CSE">CSE</option><option value="CSM">CSM</option>
+              <option value="AIML">AIML</option><option value="MECH">MECH</option>
+              <option value="ECE">ECE</option>
+            </select>
+            <select class="filter-select" id="ic-ov-filter-batch">
+              <option value="ALL">All Batches</option>
+              <option value="2026">2026</option><option value="2027">2027</option>
+              <option value="2028">2028</option><option value="2029">2029</option>
+              <option value="2030">2030</option>
+            </select>
+            <select class="filter-select" id="ic-ov-filter-title">
+              <option value="ALL">All Titles</option>
+            </select>
+            <input type="text" id="ic-ov-search" class="input-text" placeholder="Search by roll/name..." style="min-width:180px;">
+            <button class="btn btn-primary" id="btn-ic-export-csv" style="margin-left:auto; font-size:0.85rem; padding:0.55rem 1rem; display:flex; align-items:center; gap:0.4rem; cursor:pointer;" type="button">
+              <i class="fa-solid fa-file-csv"></i> Export CSV
+            </button>
+          </div>
+          <div class="table-container glass-panel">
+            <table>
+              <thead>
+                <tr>
+                  <th>Roll</th>
+                  <th>Name</th>
+                  <th>Branch</th>
+                  <th>Batch</th>
+                  <th>Internship Title</th>
+                  <th>Companies / Projects</th>
+                  <th>Submitted At</th>
+                </tr>
+              </thead>
+              <tbody id="ic-overview-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STUDENT INTERNSHIP VIEW -->
+    <section class="view-container" id="view-student-internships">
+      <div class="ic-wrapper">
+        <div class="panel-header">
+          <h2><i class="fa-solid fa-briefcase"></i> My Internship Details</h2>
+        </div>
+        <div class="student-internship-layout">
+          <!-- Right: Profile card sticky -->
+          <div class="internship-titles-container" id="student-internship-titles-container">
+            <div class="internship-empty-state" id="student-internship-empty">
+              <i class="fa-solid fa-briefcase"></i>
+              <p>No internship forms have been published yet. Check back later.</p>
+            </div>
+          </div>
+          <div class="glass-panel student-internship-profile-card" id="student-internship-profile-card">
+            <div class="profile-avatar" id="si-avatar">?</div>
+            <h3 id="si-name">--</h3>
+            <div class="profile-roll" id="si-roll">--</div>
+            <div class="profile-branch" id="si-branch">--</div>
+            <div style="margin-top:1rem;width:100%;">
+              <div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.25rem;">Submitted Forms</div>
+              <div style="font-size:2rem;font-weight:800;color:var(--primary);" id="si-submitted-count">0</div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -1648,27 +1875,7 @@
     </div>
   </dialog>
 
-  <!-- DIALOG 8: ADMIN RECOVERY EMAIL SETUP -->
-  <dialog id="dialog-admin-email-setup" closedby="none" aria-labelledby="admin-email-setup-title">
-    <div class="modal-header">
-      <h3 id="admin-email-setup-title"><i class="fa-solid fa-envelope-open-text" style="color: var(--primary);"></i> Setup Recovery Email</h3>
-    </div>
-    <div class="modal-body" style="padding: 1.5rem 1.5rem 0 1.5rem;">
-      <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.25rem; line-height: 1.5;">
-        Since you are logging in as an Administrative User (HOD / Principal / Admin), please register your personal work Gmail address. This email will be used for automated password recovery.
-      </p>
-      <form id="form-admin-email-setup" novalidate>
-        <div class="form-group" style="margin-bottom: 1.5rem;">
-          <label for="admin-setup-email">Recovery Gmail Address</label>
-          <input type="email" id="admin-setup-email" required class="input-text" placeholder="username@gmail.com" style="width: 100%;">
-          <div class="error-msg" id="admin-setup-email-error" style="display: none;">
-            <span>❌</span> Please enter a valid Gmail address ending with @gmail.com
-          </div>
-        </div>
-        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem;">Save & Continue</button>
-      </form>
-    </div>
-  </dialog>
+
 
   <!-- DIALOG 9: ADMIN EDIT ACCOUNT PASSWORD -->
   <dialog id="dialog-admin-edit-password" closedby="any" aria-labelledby="admin-edit-password-title">

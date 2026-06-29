@@ -22,7 +22,10 @@ const DEFAULT_FALLBACK_DATA = {
   audit_logs: [],
   notices: [],
   assignments: [],
-  activity_logs: []
+  activity_logs: [],
+  internship_titles: [],
+  internship_items: [],
+  student_internship_submissions: []
 };
 
 let mysqlPool = null;
@@ -97,6 +100,27 @@ async function initPostgresTables() {
       username VARCHAR(50) NOT NULL,
       action VARCHAR(255) NOT NULL,
       timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS internship_titles (
+      id SERIAL PRIMARY KEY,
+      title VARCHAR(255) NOT NULL,
+      coordinator VARCHAR(100) NOT NULL,
+      filter_branch VARCHAR(50) DEFAULT 'ALL',
+      filter_batch VARCHAR(50) DEFAULT 'ALL',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS internship_items (
+      id SERIAL PRIMARY KEY,
+      title_id INT NOT NULL REFERENCES internship_titles(id) ON DELETE CASCADE,
+      name VARCHAR(255) NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS student_internship_submissions (
+      id SERIAL PRIMARY KEY,
+      student_roll VARCHAR(50) NOT NULL,
+      title_id INT NOT NULL,
+      item_ids TEXT NOT NULL DEFAULT '',
+      submitted BOOLEAN DEFAULT FALSE,
+      submitted_at TIMESTAMP NULL
     )`
   ];
 
@@ -123,7 +147,7 @@ async function initMysqlTables(conn) {
     `CREATE TABLE IF NOT EXISTS users (
       username VARCHAR(50) PRIMARY KEY,
       password VARCHAR(255) NOT NULL,
-      role ENUM('student', 'hod', 'principal', 'admin') NOT NULL,
+      role VARCHAR(50) NOT NULL,
       name VARCHAR(100) NOT NULL,
       branch VARCHAR(10) NULL,
       email VARCHAR(100) NULL
@@ -163,7 +187,7 @@ async function initMysqlTables(conn) {
       id INT AUTO_INCREMENT PRIMARY KEY,
       title VARCHAR(255) NOT NULL,
       message TEXT NOT NULL,
-      priority ENUM('normal', 'imp', 'urgent') NOT NULL DEFAULT 'normal',
+      priority VARCHAR(20) NOT NULL DEFAULT 'normal',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`,
     `CREATE TABLE IF NOT EXISTS assignments (
@@ -180,6 +204,28 @@ async function initMysqlTables(conn) {
       username VARCHAR(50) NOT NULL,
       action VARCHAR(255) NOT NULL,
       timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS internship_titles (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      title VARCHAR(255) NOT NULL,
+      coordinator VARCHAR(100) NOT NULL,
+      filter_branch VARCHAR(50) DEFAULT 'ALL',
+      filter_batch VARCHAR(50) DEFAULT 'ALL',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS internship_items (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      title_id INT NOT NULL,
+      name VARCHAR(255) NOT NULL,
+      FOREIGN KEY (title_id) REFERENCES internship_titles(id) ON DELETE CASCADE
+    )`,
+    `CREATE TABLE IF NOT EXISTS student_internship_submissions (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      student_roll VARCHAR(50) NOT NULL,
+      title_id INT NOT NULL,
+      item_ids TEXT NOT NULL DEFAULT '',
+      submitted TINYINT(1) DEFAULT 0,
+      submitted_at TIMESTAMP NULL
     )`
   ];
 
@@ -353,6 +399,9 @@ function readFallbackData() {
   data.notices = data.notices || [];
   data.assignments = data.assignments || [];
   data.activity_logs = data.activity_logs || [];
+  data.internship_titles = data.internship_titles || [];
+  data.internship_items = data.internship_items || [];
+  data.student_internship_submissions = data.student_internship_submissions || [];
   return data;
 }
 
@@ -881,6 +930,191 @@ const db = {
       const [res] = await pool.query('UPDATE users SET password = ? WHERE username = ?', [newPassword, username]);
       return res.affectedRows > 0;
     }
+  },
+
+  // ========== INTERNSHIP METHODS ==========
+
+  createInternshipTitle: async (title, coordinator, filterBranch, filterBatch) => {
+    if (isFallbackMode) {
+      const data = readFallbackData();
+      const newId = (data.internship_titles.length > 0 ? Math.max(...data.internship_titles.map(t => t.id)) : 0) + 1;
+      data.internship_titles.push({
+        id: newId,
+        title,
+        coordinator,
+        filter_branch: filterBranch || 'ALL',
+        filter_batch: filterBatch || 'ALL',
+        created_at: new Date().toISOString()
+      });
+      writeFallbackData(data);
+      return newId;
+    } else {
+      const [result] = await pool.query(
+        'INSERT INTO internship_titles (title, coordinator, filter_branch, filter_batch) VALUES (?, ?, ?, ?)',
+        [title, coordinator, filterBranch || 'ALL', filterBatch || 'ALL']
+      );
+      if (dbType === 'postgres') {
+        // For postgres, result is {affectedRows} — we need to fetch the last inserted id
+        const [rows] = await pool.query('SELECT id FROM internship_titles WHERE coordinator = ? ORDER BY created_at DESC LIMIT 1', [coordinator]);
+        return rows[0] ? rows[0].id : null;
+      }
+      return result.insertId;
+    }
+  },
+
+  addInternshipItem: async (titleId, name) => {
+    if (isFallbackMode) {
+      const data = readFallbackData();
+      const newId = (data.internship_items.length > 0 ? Math.max(...data.internship_items.map(i => i.id)) : 0) + 1;
+      data.internship_items.push({ id: newId, title_id: parseInt(titleId), name });
+      writeFallbackData(data);
+      return newId;
+    } else {
+      const [result] = await pool.query('INSERT INTO internship_items (title_id, name) VALUES (?, ?)', [titleId, name]);
+      if (dbType === 'postgres') {
+        const [rows] = await pool.query('SELECT id FROM internship_items WHERE title_id = ? AND name = ? ORDER BY id DESC LIMIT 1', [titleId, name]);
+        return rows[0] ? rows[0].id : null;
+      }
+      return result.insertId;
+    }
+  },
+  
+  updateInternshipTitle: async (titleId, newTitle) => {
+    if (isFallbackMode) {
+      const data = readFallbackData();
+      const tid = parseInt(titleId);
+      const title = data.internship_titles.find(t => t.id === tid);
+      if (title) {
+        title.title = newTitle;
+        writeFallbackData(data);
+        return true;
+      }
+      return false;
+    } else {
+      await pool.query('UPDATE internship_titles SET title = ? WHERE id = ?', [newTitle, titleId]);
+      return true;
+    }
+  },
+
+  deleteInternshipTitle: async (titleId) => {
+    if (isFallbackMode) {
+      const data = readFallbackData();
+      const tid = parseInt(titleId);
+      data.internship_titles = data.internship_titles.filter(t => t.id !== tid);
+      data.internship_items = data.internship_items.filter(i => i.title_id !== tid);
+      writeFallbackData(data);
+      return true;
+    } else {
+      await pool.query('DELETE FROM internship_titles WHERE id = ?', [titleId]);
+      return true;
+    }
+  },
+
+  deleteInternshipItem: async (itemId) => {
+    if (isFallbackMode) {
+      const data = readFallbackData();
+      data.internship_items = data.internship_items.filter(i => i.id !== parseInt(itemId));
+      writeFallbackData(data);
+      return true;
+    } else {
+      await pool.query('DELETE FROM internship_items WHERE id = ?', [itemId]);
+      return true;
+    }
+  },
+
+  getInternshipTitles: async () => {
+    if (isFallbackMode) {
+      const data = readFallbackData();
+      return data.internship_titles.map(t => ({
+        ...t,
+        items: data.internship_items.filter(i => i.title_id === t.id)
+      }));
+    } else {
+      const [titles] = await pool.query('SELECT * FROM internship_titles ORDER BY created_at DESC');
+      const [items] = await pool.query('SELECT * FROM internship_items ORDER BY id ASC');
+      return titles.map(t => ({
+        ...t,
+        items: items.filter(i => i.title_id === t.id)
+      }));
+    }
+  },
+
+  submitStudentInternships: async (studentRoll, titleId, itemIds, isAdmin = false) => {
+    if (isFallbackMode) {
+      const data = readFallbackData();
+      const existing = data.student_internship_submissions.find(
+        s => s.student_roll === studentRoll && s.title_id === parseInt(titleId)
+      );
+      if (existing && existing.submitted && !isAdmin) {
+        throw new Error('Already submitted. Cannot modify.');
+      }
+      const itemIdsStr = Array.isArray(itemIds) ? itemIds.join(',') : (itemIds || '');
+      if (existing) {
+        existing.item_ids = itemIdsStr;
+        existing.submitted = true;
+        existing.submitted_at = new Date().toISOString();
+      } else {
+        const newId = (data.student_internship_submissions.length > 0 ? Math.max(...data.student_internship_submissions.map(s => s.id)) : 0) + 1;
+        data.student_internship_submissions.push({
+          id: newId,
+          student_roll: studentRoll,
+          title_id: parseInt(titleId),
+          item_ids: itemIdsStr,
+          submitted: true,
+          submitted_at: new Date().toISOString()
+        });
+      }
+      writeFallbackData(data);
+      return true;
+    } else {
+      const itemIdsStr = Array.isArray(itemIds) ? itemIds.join(',') : (itemIds || '');
+      const [existing] = await pool.query(
+        'SELECT * FROM student_internship_submissions WHERE student_roll = ? AND title_id = ?',
+        [studentRoll, titleId]
+      );
+      if (existing.length > 0 && existing[0].submitted && !isAdmin) {
+        throw new Error('Already submitted. Cannot modify.');
+      }
+      if (existing.length > 0) {
+        await pool.query(
+          'UPDATE student_internship_submissions SET item_ids = ?, submitted = 1, submitted_at = NOW() WHERE student_roll = ? AND title_id = ?',
+          [itemIdsStr, studentRoll, titleId]
+        );
+      } else {
+        await pool.query(
+          'INSERT INTO student_internship_submissions (student_roll, title_id, item_ids, submitted, submitted_at) VALUES (?, ?, ?, 1, NOW())',
+          [studentRoll, titleId, itemIdsStr]
+        );
+      }
+      return true;
+    }
+  },
+
+  getStudentSubmissions: async (studentRoll) => {
+    if (isFallbackMode) {
+      const data = readFallbackData();
+      return data.student_internship_submissions.filter(s => s.student_roll === studentRoll);
+    } else {
+      const [rows] = await pool.query(
+        'SELECT * FROM student_internship_submissions WHERE student_roll = ?',
+        [studentRoll]
+      );
+      return rows;
+    }
+  },
+
+  getAllInternshipSubmissions: async () => {
+    if (isFallbackMode) {
+      const data = readFallbackData();
+      return data.student_internship_submissions;
+    } else {
+      const [rows] = await pool.query('SELECT * FROM student_internship_submissions ORDER BY submitted_at DESC');
+      return rows;
+    }
+  },
+
+  adminUpdateStudentSubmission: async (studentRoll, titleId, itemIds) => {
+    return db.submitStudentInternships(studentRoll, titleId, itemIds, true);
   }
 };
 

@@ -130,10 +130,36 @@ h1, h2, h3, h4, h5, h6 {
 
 .nav-menu-bar {
   display: flex;
-  gap: 1rem;
+  gap: 0.75rem;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary) transparent;
+  flex: 1;
+  margin: 0 1.5rem;
+  padding-bottom: 6px;
+}
+
+.nav-menu-bar::-webkit-scrollbar {
+  height: 4px;
+  display: block;
+}
+
+.nav-menu-bar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
+}
+
+.nav-menu-bar::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 4px;
+}
+
+.nav-menu-bar::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
 }
 
 .floating-widget-btn {
+  flex-shrink: 0;
   background: var(--bg-card);
   backdrop-filter: blur(10px);
   border: 1px solid var(--border-color);
@@ -1304,3 +1330,172 @@ dialog::backdrop {
   color: rgba(255, 255, 255, 0.1);
 }
 
+
+/* ========== V2: OTP VERIFICATION ========== */
+.otp-verify-row { display: flex; gap: 0.5rem; align-items: flex-end; margin-top: 0.5rem; }
+.otp-verify-row > .input-with-icon { flex: 1; }
+.btn-otp-send { background: linear-gradient(135deg, hsl(243,75%,59%), hsl(271,91%,65%)); color: #fff; border: none; border-radius: var(--radius-sm); padding: 0.65rem 0.9rem; font-size: 0.82rem; font-weight: 600; cursor: pointer; white-space: nowrap; transition: var(--transition-smooth); font-family: inherit; height: 42px; }
+.btn-otp-send:hover { opacity: 0.85; }
+.btn-otp-send:disabled { opacity: 0.4; cursor: default; }
+.otp-input-row { display: none; gap: 0.5rem; align-items: center; margin-top: 0.5rem; }
+.otp-input-row.visible { display: flex; }
+.otp-input-row input { flex: 1; letter-spacing: 6px; font-size: 1.1rem; font-weight: 700; text-align: center; }
+.btn-otp-verify { background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); color: #34d399; border-radius: var(--radius-sm); padding: 0.55rem 0.9rem; font-size: 0.82rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+.btn-otp-verify:hover { background: rgba(16,185,129,0.25); }
+.otp-verified-badge { display: none; align-items: center; gap: 0.4rem; font-size: 0.8rem; color: #34d399; font-weight: 600; margin-top: 0.35rem; }
+.otp-verified-badge.visible { display: flex; }
+.otp-timer { font-size: 0.78rem; color: var(--warning); margin-top: 0.25rem; }
+
+/* ========== V2: ROLE INDICATOR - IC ========== */
+.role-internship_coordinator { background: linear-gradient(135deg, rgba(20,184,166,0.2), rgba(6,182,212,0.2)); color: #2dd4bf; border: 1px solid rgba(45,212,191,0.3); }
+
+/* ========== V2: IC PORTAL VIEW ========== */
+#ic-widgets { display: none; gap: 0.5rem; }
+#view-ic { display: none; padding: 0; }
+#view-ic.active { display: block; }
+.ic-wrapper { padding: 1rem 2rem 2rem; }
+.ic-panel { display: none; }
+.ic-panel.active { display: block; }
+.ic-publish-layout { display: grid; grid-template-columns: 1fr 1.4fr; gap: 2rem; margin-top: 1.5rem; align-items: start; }
+@media (max-width: 900px) { .ic-publish-layout { grid-template-columns: 1fr; } }
+.ic-student-list-panel { padding: 1.5rem; }
+.ic-student-list-panel h3 { margin-bottom: 1rem; }
+.ic-student-list { max-height: 55vh; overflow-y: auto; padding-right: 0.25rem; }
+.ic-student-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); margin-bottom: 0.5rem; background: rgba(15,23,42,0.3); font-size: 0.875rem; transition: background 0.2s; }
+.ic-student-row:hover { background: rgba(99,102,241,0.07); }
+.ic-student-avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--accent)); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; flex-shrink: 0; }
+.ic-student-name { font-weight: 600; font-size: 0.85rem; }
+.ic-student-meta { font-size: 0.75rem; color: var(--text-secondary); }
+.ic-publish-right { display: flex; flex-direction: column; gap: 1.5rem; }
+.ic-title-builder { padding: 1.5rem; position: relative; z-index: 10; }
+.ic-published-log { position: relative; z-index: 1; }
+.ic-title-input-row { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+.ic-title-input-row input { flex: 1; padding: 0.65rem 0.9rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-family: inherit; font-size: 0.95rem; outline: none; transition: border-color 0.2s; }
+.ic-title-input-row input:focus { border-color: var(--primary); }
+.ic-items-list { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1rem; max-height: 220px; overflow-y: auto; }
+.ic-item-row { display: flex; align-items: center; gap: 0.5rem; background: rgba(99,102,241,0.06); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 0.4rem 0.75rem; font-size: 0.875rem; }
+.ic-item-row span { flex: 1; }
+.btn-ic-delete-item { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 0.9rem; padding: 0.2rem 0.35rem; border-radius: 4px; transition: background 0.2s; }
+.btn-ic-delete-item:hover { background: rgba(244,63,94,0.12); }
+.ic-add-item-row { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+.ic-add-item-row input { flex: 1; padding: 0.55rem 0.8rem; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-family: inherit; font-size: 0.9rem; outline: none; }
+.ic-add-item-row input:focus { border-color: var(--primary); }
+.btn-ic-add-item { background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); color: var(--primary); border-radius: var(--radius-sm); padding: 0.55rem 1rem; cursor: pointer; font-weight: 700; font-size: 1.1rem; transition: background 0.2s; font-family: inherit; }
+.btn-ic-add-item:hover { background: rgba(99,102,241,0.28); }
+.ic-publish-filters { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.ic-publish-filters select { flex: 1; min-width: 120px; }
+.btn-ic-publish { width: 100%; background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; border: none; border-radius: var(--radius-sm); padding: 0.75rem; font-size: 1rem; font-weight: 700; cursor: pointer; transition: opacity 0.2s; font-family: inherit; }
+.btn-ic-publish:hover { opacity: 0.88; }
+.ic-published-log { padding: 1.5rem; }
+.ic-published-title-card { background: rgba(15,23,42,0.5); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 1rem; margin-bottom: 0.75rem; transition: border-color 0.2s; }
+.ic-published-title-card:hover { border-color: var(--border-color-hover); }
+.ic-published-title-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+.ic-published-title-header strong { color: var(--primary); font-size: 0.95rem; }
+.ic-title-meta { font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 0.5rem; }
+.ic-published-items-list { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.ic-chip { background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2); border-radius: var(--radius-full); padding: 0.2rem 0.65rem; font-size: 0.78rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.3rem; }
+.btn-chip-delete { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 0.75rem; padding: 0; line-height: 1; }
+
+/* ========== V2: STUDENT INTERNSHIP PORTAL ========== */
+.student-internship-layout { display: grid; grid-template-columns: 1fr 300px; gap: 2rem; margin-top: 1rem; align-items: start; }
+@media (max-width: 900px) { .student-internship-layout { grid-template-columns: 1fr; } }
+.student-internship-profile-card { padding: 1.5rem; display: flex; flex-direction: column; align-items: center; gap: 0.75rem; text-align: center; position: sticky; top: 80px; }
+.student-internship-profile-card .profile-avatar { width: 72px; height: 72px; font-size: 1.6rem; }
+.internship-titles-container { display: flex; flex-direction: column; gap: 1.5rem; }
+.internship-title-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.5rem; transition: border-color 0.2s; }
+.internship-title-card:hover { border-color: var(--border-color-hover); }
+.internship-title-card.locked { border-color: rgba(16,185,129,0.25); background: rgba(16,185,129,0.03); }
+.internship-title-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+.internship-title-card-header h3 { font-size: 1rem; color: var(--primary); }
+.internship-locked-badge { font-size: 0.75rem; color: #34d399; background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.25); border-radius: var(--radius-full); padding: 0.2rem 0.65rem; display: flex; align-items: center; gap: 0.35rem; }
+.internship-items-grid { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.25rem; }
+.internship-item-checkbox-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 0.9rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: rgba(15,23,42,0.3); cursor: pointer; transition: all 0.2s; }
+.internship-item-checkbox-row:hover:not(.locked-item) { border-color: var(--primary); background: rgba(99,102,241,0.07); }
+.internship-item-checkbox-row.checked { border-color: rgba(99,102,241,0.4); background: rgba(99,102,241,0.1); }
+.internship-item-checkbox-row.locked-item { cursor: default; }
+.internship-item-checkbox-row input[type="checkbox"] { accent-color: var(--primary); width: 16px; height: 16px; flex-shrink: 0; cursor: pointer; }
+.internship-item-checkbox-row label { flex: 1; font-size: 0.9rem; cursor: pointer; }
+.internship-item-checkbox-row.locked-item label { cursor: default; }
+.btn-internship-submit { width: 100%; background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; border: none; border-radius: var(--radius-sm); padding: 0.75rem; font-size: 0.95rem; font-weight: 700; cursor: pointer; font-family: inherit; transition: opacity 0.2s; }
+.btn-internship-submit:hover { opacity: 0.88; }
+.btn-internship-submit:disabled { opacity: 0.35; cursor: default; }
+.internship-empty-state { text-align: center; padding: 3rem 1rem; color: var(--text-secondary); }
+.internship-empty-state i { font-size: 2.5rem; margin-bottom: 1rem; color: var(--text-muted); display: block; }
+
+/* ========== V2: INTERNSHIP COLUMNS / OVERVIEW ========== */
+.internship-title-group { margin-bottom: 0.35rem; }
+.internship-title-label { font-size: 0.75rem; font-weight: 600; color: var(--primary); margin-bottom: 0.2rem; }
+.internship-tag { display: inline-block; background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2); border-radius: var(--radius-full); padding: 0.15rem 0.55rem; font-size: 0.72rem; color: var(--text-secondary); margin: 0.1rem; }
+.no-internships-msg { color: var(--text-secondary); font-size: 0.85rem; font-style: italic; }
+.ic-overview-controls { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.5rem; align-items: center; }
+
+/* ========== V2: CUSTOM MULTISELECT DROPDOWNS ========== */
+.custom-multiselect {
+  position: relative;
+  flex: 1;
+  min-width: 120px;
+}
+
+.multiselect-select-box {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem;
+  border-radius: var(--radius-sm, 6px);
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 0.85rem;
+  user-select: none;
+}
+
+.multiselect-options {
+  display: none;
+  position: absolute;
+  top: 105%;
+  left: 0;
+  right: 0;
+  background-color: #111522 !important;
+  background: #111522 !important;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 6px);
+  z-index: 99999 !important;
+  max-height: 180px;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.9) !important;
+  padding: 0.5rem;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.multiselect-options.open {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.multiselect-options label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 4px;
+  user-select: none;
+}
+
+.multiselect-options label:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+}
+
+.multiselect-options input[type="checkbox"] {
+  accent-color: var(--primary);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}

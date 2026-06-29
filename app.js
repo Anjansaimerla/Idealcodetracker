@@ -3,13 +3,21 @@ const STORAGE_KEY = 'ideal_code_tracker_db';
 // App State
 let studentsDb = [];
 let currentUser = null;
-let currentRole = 'student'; // 'student' | 'hod' | 'principal' | 'admin'
+let currentRole = 'student'; // 'student' | 'hod' | 'principal' | 'admin' | 'internship_coordinator'
 let activeWidgetPanel = 'panel-individual';
 let activeBatchYear = 'ALL';
 let activeAdminPanel = 'admin-panel-dashboard';
 let chartInstances = {};
 let principalSelectedBranch = 'CSE';
 let principalSelectedBatch = 'ALL';
+
+// V2: Internship State
+let internshipTitlesDb = [];
+let studentSubmissionsDb = [];
+let icDraftItems = []; // Draft items being built for a new IC title
+let icOverviewData = {};
+let otpEmailVerified = false;
+let otpTimerInterval = null;
 
 // URL Regex Validations
 const URL_REGEX = {
@@ -45,6 +53,9 @@ async function fetchStudents() {
     const data = await res.json();
     studentsDb = data.students || [];
     calculateTotalScoresAndRankings();
+    if (currentUser) {
+      await loadGlobalInternshipData();
+    }
   } catch (err) {
     console.error('Failed to fetch students:', err);
   }
@@ -102,18 +113,7 @@ function setupEventListeners() {
   // Login Submit
   document.getElementById('form-login').addEventListener('submit', handleLogin);
 
-  // Dynamic role assessment: hide Batch Year select if logging in as an administrator
-  const loginUsernameEl = document.getElementById('login-username');
-  if (loginUsernameEl) {
-    loginUsernameEl.addEventListener('input', () => {
-      const val = loginUsernameEl.value.trim();
-      const isNotStudent = val.includes('@') || ['admin', 'principal', 'hod'].some(role => val.toLowerCase().includes(role));
-      const batchYearGroup = document.getElementById('login-batch-year-group');
-      if (batchYearGroup) {
-        batchYearGroup.style.display = isNotStudent ? 'none' : 'block';
-      }
-    });
-  }
+
 
   // Register Step 1 Submit
   document.getElementById('form-register-1').addEventListener('submit', handleRegisterStep1);
@@ -242,11 +242,7 @@ function setupEventListeners() {
   // Forgot Password Submit
   document.getElementById('form-forgot').addEventListener('submit', handleForgotPassword);
 
-  // Admin Recovery Email setup form submission
-  const formAdminEmailSetup = document.getElementById('form-admin-email-setup');
-  if (formAdminEmailSetup) {
-    formAdminEmailSetup.addEventListener('submit', handleAdminEmailSetupSubmit);
-  }
+
 
   // Admin target user password edit form submission
   const formAdminEditPassword = document.getElementById('form-admin-edit-password');
@@ -341,6 +337,21 @@ function setupEventListeners() {
       changePasswordDialog.close();
     });
   }
+
+  // ── V2: Hook up new event listeners ──
+  setupOTPEventListeners();
+  setupICEventListeners();
+  setupStudentInternshipEventListeners();
+  setupAdminInternshipEventListeners();
+
+  // Admin internship panel switch
+  const btnAdminInternships = document.getElementById('btn-admin-internships');
+  if (btnAdminInternships) {
+    btnAdminInternships.addEventListener('click', () => {
+      switchAdminPanel('admin-panel-internships', btnAdminInternships);
+      loadAdminInternships();
+    });
+  }
 }
 
 // Helper to switch visual auth sections (Login, Register1, Register2)
@@ -353,7 +364,7 @@ function showAuthSection(sectionId) {
 
 // Helper to switch global views
 function switchView(viewId) {
-  const views = ['view-auth', 'view-dashboard', 'view-student-profile', 'view-admin'];
+  const views = ['view-auth', 'view-dashboard', 'view-student-profile', 'view-admin', 'view-ic', 'view-student-internships'];
   views.forEach(id => {
     const el = document.getElementById(id);
     if (el) {
@@ -435,32 +446,26 @@ async function handleLogin(e) {
     }
     sessionStorage.setItem('ideal_code_tracker_session', JSON.stringify(currentUser));
     
-    // Set active batch year from login form select
-    const loginBatchYearEl = document.getElementById('login-batch-year');
-    if (loginBatchYearEl) {
-      activeBatchYear = loginBatchYearEl.value;
-      // update the active class on buttons in the widgets
-      document.querySelectorAll('.floating-batch-widget').forEach(widget => {
-        widget.querySelectorAll('.batch-btn').forEach(b => {
-          if (b.getAttribute('data-batch') === activeBatchYear) {
-            b.classList.add('active');
-          } else {
-            b.classList.remove('active');
-          }
-        });
-      });
+    // Set active batch year dynamically based on role
+    if (currentUser.role === 'student') {
+      const student = studentsDb.find(s => (s.roll || s.username) === (currentUser.roll || currentUser.username));
+      activeBatchYear = student ? String(student.batchYear || student.batch_year || 'ALL') : 'ALL';
+    } else {
+      activeBatchYear = 'ALL';
     }
 
-    // Check if recovery Gmail is required (non-students only)
-    if (currentUser.role !== 'student' && !currentUser.email) {
-      await fetchStudents();
-      const emailModal = document.getElementById('dialog-admin-email-setup');
-      if (emailModal) {
-        resetFormErrors(document.getElementById('form-admin-email-setup'));
-        emailModal.showModal();
-        return;
-      }
-    }
+    // Update active class on batch selection buttons in UI
+    document.querySelectorAll('.floating-batch-widget').forEach(widget => {
+      widget.querySelectorAll('.batch-btn').forEach(b => {
+        if (b.getAttribute('data-batch') === activeBatchYear) {
+          b.classList.add('active');
+        } else {
+          b.classList.remove('active');
+        }
+      });
+    });
+
+
 
     // Refresh student data from server
     await fetchStudents();
@@ -547,12 +552,14 @@ async function handleChangePasswordSubmit(e) {
 }
 
 // Redirect and configure UI permissions on success login
-function loginSuccessRedirect() {
+async function loginSuccessRedirect() {
+  await loadGlobalInternshipData();
+
   // Update header elements
   const userInfo = document.getElementById('nav-user-info');
   const userRole = document.getElementById('nav-user-role');
   
-  userInfo.innerHTML = `<i class="fa-solid fa-circle-user"></i> ${currentUser.name}`;
+  userInfo.innerHTML = `<i class="fa-solid fa-circle-user" style="font-size: 1.5rem; cursor: pointer;" title="${escapeHtml(currentUser.name)}"></i>`;
   userRole.textContent = currentUser.role.toUpperCase();
   userRole.className = `role-indicator role-${currentUser.role}`;
 
@@ -591,17 +598,30 @@ function loginSuccessRedirect() {
   // Route admin or other roles appropriately
   if (currentUser.role === 'admin') {
     document.getElementById('nav-widgets').style.display = 'none';
+    document.getElementById('ic-widgets').style.display = 'none';
     document.getElementById('admin-widgets').style.display = 'flex';
     switchView('view-admin');
     
     // Default to dashboard subpanel
     const dashBtn = document.getElementById('btn-admin-dashboard');
     switchAdminPanel('admin-panel-dashboard', dashBtn);
+  } else if (currentUser.role === 'internship_coordinator') {
+    // IC portal
+    document.getElementById('nav-widgets').style.display = 'none';
+    document.getElementById('admin-widgets').style.display = 'none';
+    document.getElementById('ic-widgets').style.display = 'flex';
+    switchView('view-ic');
+    loadInternshipTitles();
   } else {
     document.getElementById('nav-widgets').style.display = 'flex';
+    document.getElementById('ic-widgets').style.display = 'none';
     document.getElementById('admin-widgets').style.display = 'none';
     
     if (currentUser.role === 'student') {
+      // Show internship button for students
+      const btnInternships = document.getElementById('btn-widget-internships');
+      if (btnInternships) btnInternships.style.display = 'inline-block';
+
       // Default to My Profile tab
       document.querySelectorAll('#nav-widgets .floating-widget-btn').forEach(btn => btn.classList.remove('active'));
       const btnWidgetProfile = document.getElementById('btn-widget-profile');
@@ -626,6 +646,7 @@ function loginSuccessRedirect() {
   if (currentUser.role === 'student') {
     loadNoticesAndAnnouncements();
     loadStudentAssignments();
+    loadStudentInternships();
   }
 
   // Populate comparison datalists
@@ -683,6 +704,15 @@ function handleRegisterStep1(e) {
   if (!emailVal || !/^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(emailVal.toLowerCase())) {
     showInputError('reg-email');
     isValid = false;
+  }
+  // OTP verification check
+  if (!otpEmailVerified) {
+    const otpErr = document.getElementById('reg-otp-error');
+    if (otpErr) otpErr.style.display = 'block';
+    isValid = false;
+  } else {
+    const otpErr = document.getElementById('reg-otp-error');
+    if (otpErr) otpErr.style.display = 'none';
   }
   if (!branchVal) {
     showInputError('reg-branch');
@@ -1084,6 +1114,7 @@ function renderIndividualTable() {
       <td><span class="platform-mini-badge"><i class="fa-solid fa-terminal" style="color: #2f8955;"></i> ${student.stats.gfg}</span></td>
       <td><span class="platform-mini-badge"><i class="fa-solid fa-cookie-bite" style="color: #ab7a5f;"></i> ${student.stats.codechef || 0}</span></td>
       <td><span class="platform-mini-badge"><i class="fa-brands fa-github" style="color: #f0f6fc;"></i> ${student.stats.github || 0}</span></td>
+      ${buildInternshipCells(student.roll)}
     `;
 
     // Add click listener for roll details popup
@@ -1439,11 +1470,39 @@ function handleCSVDownload() {
     filename = `${currentUser.branch.toLowerCase()}_department_code_tracker_report.csv`;
   }
 
-  // Construct CSV String
-  let csvContent = "Rank,Roll Number,Name,Branch,Gmail,Total Score,LeetCode Solved,HackerRank Score,Codeforces Rating,GeeksforGeeks Solved,CodeChef Solved,GitHub Repos\n";
+  // Construct CSV Header
+  const titles = internshipTitlesDb;
+  let titleHeaders = titles.map(t => `"${t.title.toUpperCase()}"`).join(',');
+  let csvContent = `Rank,Roll Number,Name,Branch,Gmail,Total Score,LeetCode Solved,HackerRank Score,Codeforces Rating,GeeksforGeeks Solved,CodeChef Solved,GitHub Repos,${titleHeaders}\n`;
   
+  // Cache submissions
+  const submissionsSource = studentSubmissionsDb;
+  const submissionsMap = {};
+  submissionsSource.forEach(sub => {
+    if (sub.submitted) {
+      if (!submissionsMap[sub.student_roll]) {
+        submissionsMap[sub.student_roll] = {};
+      }
+      submissionsMap[sub.student_roll][sub.title_id] = sub;
+    }
+  });
+
   list.forEach(s => {
-    csvContent += `${s.globalRank},"${s.roll}","${s.name}","${s.branch}","${s.email}",${s.totalScore},${s.stats.leetcode || 0},${s.stats.hackerrank || 0},${s.stats.codeforces || 0},${s.stats.gfg || 0},${s.stats.codechef || 0},${s.stats.github || 0}\n`;
+    let titleValues = [];
+    titles.forEach(title => {
+      const sub = submissionsMap[s.roll] ? submissionsMap[s.roll][title.id] : null;
+      if (!sub) {
+        titleValues.push('—');
+      } else {
+        const itemIds = sub.item_ids ? sub.item_ids.split(',').filter(Boolean).map(Number) : [];
+        const submittedItems = (title.items || []).filter(it => itemIds.includes(it.id));
+        const itemsText = submittedItems.map(it => it.name).join('; ') || 'None';
+        titleValues.push(itemsText);
+      }
+    });
+
+    let rowValues = titleValues.map(v => `"${v}"`).join(',');
+    csvContent += `${s.globalRank},"${s.roll}","${s.name}","${s.branch}","${s.email}",${s.totalScore},${s.stats.leetcode || 0},${s.stats.hackerrank || 0},${s.stats.codeforces || 0},${s.stats.gfg || 0},${s.stats.codechef || 0},${s.stats.github || 0},${rowValues}\n`;
   });
 
   // Create downloadable blob
@@ -2706,7 +2765,7 @@ function renderPrincipalBranchAnalytics() {
   if (tbody) {
     tbody.innerHTML = '';
     if (totalCount === 0) {
-      tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: var(--text-secondary); padding: 2.5rem;">No registered students found for ${branch} branch (Batch ${batch}).</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="12" style="text-align: center; color: var(--text-secondary); padding: 2.5rem;">No registered students found for ${branch} branch (Batch ${batch}).</td></tr>`;
     } else {
       const sortedStudents = [...filteredStudents].sort((a, b) => b.totalScore - a.totalScore).slice(0, 50);
       sortedStudents.forEach((student, index) => {
@@ -2727,6 +2786,7 @@ function renderPrincipalBranchAnalytics() {
           <td><span class="platform-mini-badge"><i class="fa-solid fa-terminal" style="color: #2f8955;"></i> ${student.stats.gfg || 0}</span></td>
           <td><span class="platform-mini-badge"><i class="fa-solid fa-cookie-bite" style="color: #ab7a5f;"></i> ${student.stats.codechef || 0}</span></td>
           <td><span class="platform-mini-badge"><i class="fa-brands fa-github" style="color: #f0f6fc;"></i> ${student.stats.github || 0}</span></td>
+          ${buildInternshipCells(student.roll)}
         `;
         tbody.appendChild(tr);
       });
@@ -3060,3 +3120,1189 @@ async function handleAdminEditPasswordSubmit(e) {
 
 // Execute on script load
 window.addEventListener('DOMContentLoaded', initApp);
+
+// ============================================================
+// V2: OTP VERIFICATION SYSTEM
+// ============================================================
+
+function setupOTPEventListeners() {
+  const btnSendOTP = document.getElementById('btn-send-otp');
+  const btnVerifyOTP = document.getElementById('btn-verify-otp');
+
+  if (btnSendOTP) {
+    btnSendOTP.addEventListener('click', handleSendOTP);
+  }
+  if (btnVerifyOTP) {
+    btnVerifyOTP.addEventListener('click', handleVerifyOTP);
+  }
+
+  // Reset OTP state whenever the email input changes
+  const regEmailInput = document.getElementById('reg-email');
+  if (regEmailInput) {
+    regEmailInput.addEventListener('input', () => {
+      if (otpEmailVerified) {
+        otpEmailVerified = false;
+        const badge = document.getElementById('otp-verified-badge');
+        if (badge) badge.classList.remove('visible');
+        const otpRow = document.getElementById('otp-input-row');
+        if (otpRow) otpRow.classList.remove('visible');
+      }
+    });
+  }
+}
+
+async function handleSendOTP() {
+  const emailVal = document.getElementById('reg-email').value.trim();
+  if (!emailVal || !/^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(emailVal.toLowerCase())) {
+    const errEl = document.getElementById('reg-email-error');
+    if (errEl) errEl.style.display = 'block';
+    return;
+  }
+
+  const btn = document.getElementById('btn-send-otp');
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+
+  try {
+    const res = await fetch('/api/auth/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: emailVal })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'Failed to send OTP.');
+      btn.disabled = false;
+      btn.textContent = 'Send OTP';
+      return;
+    }
+
+    // Show OTP input row
+    const otpRow = document.getElementById('otp-input-row');
+    if (otpRow) otpRow.classList.add('visible');
+
+    // Start countdown timer
+    startOTPTimer(btn);
+  } catch (err) {
+    console.error('OTP send error:', err);
+    alert('Failed to send OTP. Please try again.');
+    btn.disabled = false;
+    btn.textContent = 'Send OTP';
+  }
+}
+
+function startOTPTimer(btn) {
+  if (otpTimerInterval) clearInterval(otpTimerInterval);
+  let secondsLeft = 60;
+  const timerEl = document.getElementById('otp-timer');
+  if (timerEl) {
+    timerEl.style.display = 'block';
+    timerEl.textContent = `Resend OTP in ${secondsLeft}s`;
+  }
+  btn.textContent = `Resend (${secondsLeft}s)`;
+
+  otpTimerInterval = setInterval(() => {
+    secondsLeft--;
+    if (timerEl) timerEl.textContent = `Resend OTP in ${secondsLeft}s`;
+    btn.textContent = `Resend (${secondsLeft}s)`;
+
+    if (secondsLeft <= 0) {
+      clearInterval(otpTimerInterval);
+      btn.disabled = false;
+      btn.textContent = 'Resend OTP';
+      if (timerEl) timerEl.style.display = 'none';
+    }
+  }, 1000);
+}
+
+async function handleVerifyOTP() {
+  const emailVal = document.getElementById('reg-email').value.trim();
+  const otpVal = document.getElementById('otp-code').value.trim();
+
+  if (!otpVal || otpVal.length !== 6) {
+    alert('Please enter the 6-digit OTP code.');
+    return;
+  }
+
+  const btn = document.getElementById('btn-verify-otp');
+  btn.disabled = true;
+  btn.textContent = 'Verifying...';
+
+  try {
+    const res = await fetch('/api/auth/verify-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: emailVal, otp: otpVal })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.error || 'Invalid OTP. Please try again.');
+      btn.disabled = false;
+      btn.textContent = 'Verify';
+      return;
+    }
+
+    otpEmailVerified = true;
+    const badge = document.getElementById('otp-verified-badge');
+    if (badge) badge.classList.add('visible');
+    const otpRow = document.getElementById('otp-input-row');
+    if (otpRow) otpRow.classList.remove('visible');
+    const otpErrEl = document.getElementById('reg-otp-error');
+    if (otpErrEl) otpErrEl.style.display = 'none';
+    if (otpTimerInterval) clearInterval(otpTimerInterval);
+    const timerEl = document.getElementById('otp-timer');
+    if (timerEl) timerEl.style.display = 'none';
+  } catch (err) {
+    console.error('OTP verify error:', err);
+    alert('Failed to verify OTP. Please try again.');
+    btn.disabled = false;
+    btn.textContent = 'Verify';
+  }
+}
+
+// ============================================================
+// V2: INTERNSHIP COORDINATOR (IC) PORTAL
+// ============================================================
+
+async function loadInternshipTitles() {
+  try {
+    const res = await fetch('/api/internships/titles');
+    const data = await res.json();
+    internshipTitlesDb = data.titles || [];
+    renderICPublishedTitles();
+    renderICStudentList();
+    renderICOverviewFilterOptions();
+  } catch (err) {
+    console.error('Load internship titles error:', err);
+  }
+}
+
+function setupICEventListeners() {
+  // IC Panel Tab Buttons
+  const btnICPublish = document.getElementById('btn-ic-publish');
+  const btnICOverview = document.getElementById('btn-ic-overview');
+
+  if (btnICPublish) {
+    btnICPublish.addEventListener('click', () => {
+      document.querySelectorAll('#ic-widgets .floating-widget-btn').forEach(b => b.classList.remove('active'));
+      btnICPublish.classList.add('active');
+      document.querySelectorAll('.ic-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('ic-panel-publish').classList.add('active');
+      renderICStudentList();
+    });
+  }
+
+  if (btnICOverview) {
+    btnICOverview.addEventListener('click', () => {
+      document.querySelectorAll('#ic-widgets .floating-widget-btn').forEach(b => b.classList.remove('active'));
+      btnICOverview.classList.add('active');
+      document.querySelectorAll('.ic-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('ic-panel-overview').classList.add('active');
+      loadICOverview();
+    });
+  }
+
+  // IC Student List Filters
+  const icBranchFilter = document.getElementById('ic-filter-branch');
+  const icBatchFilter = document.getElementById('ic-filter-batch');
+  if (icBranchFilter) icBranchFilter.addEventListener('change', renderICStudentList);
+  if (icBatchFilter) icBatchFilter.addEventListener('change', renderICStudentList);
+
+  // IC Add Item Button
+  const btnAddItem = document.getElementById('btn-ic-add-item');
+  if (btnAddItem) {
+    btnAddItem.addEventListener('click', () => {
+      const input = document.getElementById('ic-new-item-input');
+      const val = input.value.trim();
+      if (!val) return;
+      icDraftItems.push(val);
+      input.value = '';
+      renderICDraftItems();
+    });
+  }
+
+  // Allow Enter key in item input
+  const itemInput = document.getElementById('ic-new-item-input');
+  if (itemInput) {
+    itemInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('btn-ic-add-item').click();
+      }
+    });
+  }
+
+  // IC Publish Title Button
+  const btnPublishTitle = document.getElementById('btn-ic-publish-title');
+  if (btnPublishTitle) {
+    btnPublishTitle.addEventListener('click', handleICPublishTitle);
+  }
+
+  // IC Overview filters
+  ['ic-ov-filter-branch', 'ic-ov-filter-batch', 'ic-ov-filter-title', 'ic-ov-search'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', renderICOverviewTable);
+  });
+
+  // IC Overview Export CSV Button
+  const btnICExportCSV = document.getElementById('btn-ic-export-csv');
+  if (btnICExportCSV) {
+    btnICExportCSV.addEventListener('click', handleICCSVDownload);
+  }
+}
+
+function renderICStudentList() {
+  const listEl = document.getElementById('ic-student-list');
+  const countEl = document.getElementById('ic-student-count');
+  if (!listEl) return;
+
+  const branchFilter = document.getElementById('ic-filter-branch')?.value || 'ALL';
+  const batchFilter = document.getElementById('ic-filter-batch')?.value || 'ALL';
+
+  let filtered = studentsDb;
+  if (branchFilter !== 'ALL') filtered = filtered.filter(s => s.branch === branchFilter);
+  if (batchFilter !== 'ALL') filtered = filtered.filter(s => String(s.batchYear) === batchFilter);
+
+  if (filtered.length === 0) {
+    listEl.innerHTML = '<div class="no-internships-msg">No students match this filter.</div>';
+    if (countEl) countEl.textContent = '0 students';
+    return;
+  }
+
+  if (countEl) countEl.textContent = `${filtered.length} student${filtered.length !== 1 ? 's' : ''}`;
+
+  listEl.innerHTML = filtered.map(s => {
+    const initials = s.name ? s.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '??';
+    return `<div class="ic-student-row">
+      <div class="ic-student-avatar">${initials}</div>
+      <div>
+        <div class="ic-student-name">${escapeHtml(s.name)}</div>
+        <div class="ic-student-meta">${escapeHtml(s.roll)} · ${s.branch} · ${s.batchYear}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderICDraftItems() {
+  const list = document.getElementById('ic-draft-items-list');
+  if (!list) return;
+  if (icDraftItems.length === 0) {
+    list.innerHTML = '';
+    return;
+  }
+  list.innerHTML = icDraftItems.map((item, idx) => `
+    <div class="ic-item-row">
+      <span>${escapeHtml(item)}</span>
+      <button class="btn-ic-delete-item" onclick="removeDraftItem(${idx})" title="Remove"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+  `).join('');
+}
+
+function removeDraftItem(idx) {
+  icDraftItems.splice(idx, 1);
+  renderICDraftItems();
+}
+
+async function handleICPublishTitle() {
+  const titleInput = document.getElementById('ic-new-title');
+  const titleVal = titleInput.value.trim();
+  const branchVal = getMultiselectValues('ic-pub-branch-options');
+  const batchVal = getMultiselectValues('ic-pub-batch-options');
+
+  if (!titleVal) {
+    alert('Please enter a title name before publishing.');
+    titleInput.focus();
+    return;
+  }
+  if (icDraftItems.length === 0) {
+    alert('Please add at least one internship company/project name.');
+    return;
+  }
+
+  const coordinatorName = currentUser ? currentUser.name : 'Coordinator';
+
+  try {
+    const res = await fetch('/api/internships/titles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: titleVal,
+        coordinator: coordinatorName,
+        filterBranch: branchVal,
+        filterBatch: batchVal
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'Failed to publish title.');
+      return;
+    }
+
+    const newTitleId = data.id;
+    // Add all draft items
+    for (const itemName of icDraftItems) {
+      await fetch(`/api/internships/titles/${newTitleId}/items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: itemName })
+      });
+    }
+
+    alert(`✅ Successfully published "${titleVal}" with ${icDraftItems.length} internship entries!`);
+    // Reset
+    titleInput.value = '';
+    icDraftItems = [];
+    renderICDraftItems();
+    await loadInternshipTitles();
+  } catch (err) {
+    console.error('Publish title error:', err);
+    alert('Failed to publish. Please try again.');
+  }
+}
+
+function renderICPublishedTitles() {
+  const list = document.getElementById('ic-published-titles-list');
+  if (!list) return;
+
+  if (internshipTitlesDb.length === 0) {
+    list.innerHTML = '<div class="no-internships-msg">No titles published yet.</div>';
+    return;
+  }
+
+  list.innerHTML = internshipTitlesDb.map(t => {
+    const filterLabel = [
+      t.filter_branch && t.filter_branch !== 'ALL' ? t.filter_branch : null,
+      t.filter_batch && t.filter_batch !== 'ALL' ? t.filter_batch : null
+    ].filter(Boolean).join(' · ') || 'All Students';
+
+    const itemsHtml = (t.items || []).map(item =>
+      `<span class="ic-chip">${escapeHtml(item.name)}<button class="btn-chip-delete" onclick="deleteInternshipItem(${item.id}, ${t.id})" title="Delete item"><i class="fa-solid fa-xmark"></i></button></span>`
+    ).join('');
+
+    return `<div class="ic-published-title-card">
+      <div class="ic-published-title-header" style="display:flex;justify-content:space-between;align-items:center;">
+        <strong><i class="fa-solid fa-briefcase"></i> ${escapeHtml(t.title)}</strong>
+        <div style="display:flex;gap:0.35rem;">
+          <button class="btn btn-warning" style="font-size:0.75rem;padding:0.2rem 0.6rem;background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);cursor:pointer;" onclick="editPublishedTitle(${t.id}, '${escapeHtml(t.title)}')" title="Edit Title / Add Items"><i class="fa-solid fa-pen"></i></button>
+          <button class="btn btn-danger" style="font-size:0.75rem;padding:0.2rem 0.6rem;" onclick="deleteInternshipTitle(${t.id})"><i class="fa-solid fa-trash"></i></button>
+        </div>
+      </div>
+      <div class="ic-title-meta"><i class="fa-solid fa-filter"></i> ${filterLabel} &nbsp;·&nbsp; <i class="fa-solid fa-calendar"></i> ${new Date(t.created_at).toLocaleDateString()}</div>
+      <div class="ic-published-items-list">${itemsHtml || '<span style="color:var(--text-muted);font-size:0.8rem;">No items</span>'}</div>
+    </div>`;
+  }).join('');
+}
+
+async function deleteInternshipTitle(titleId) {
+  if (!confirm('Delete this internship title and all its items? Student submissions for this title will remain.')) return;
+  try {
+    await fetch(`/api/internships/titles/${titleId}?coordinator=${encodeURIComponent(currentUser?.name || '')}`, { method: 'DELETE' });
+    await loadInternshipTitles();
+  } catch (err) {
+    console.error('Delete title error:', err);
+    alert('Failed to delete title.');
+  }
+}
+
+async function deleteInternshipItem(itemId, titleId) {
+  if (!confirm('Remove this internship item?')) return;
+  try {
+    await fetch(`/api/internships/items/${itemId}`, { method: 'DELETE' });
+    await loadInternshipTitles();
+  } catch (err) {
+    console.error('Delete item error:', err);
+    alert('Failed to delete item.');
+  }
+}
+
+async function loadICOverview() {
+  try {
+    const res = await fetch('/api/internships/overview');
+    const data = await res.json();
+    icOverviewData = data;
+    renderICOverviewFilterOptions();
+    renderICOverviewTable();
+  } catch (err) {
+    console.error('IC overview load error:', err);
+  }
+}
+
+function renderICOverviewFilterOptions() {
+  const titleFilter = document.getElementById('ic-ov-filter-title');
+  if (!titleFilter) return;
+  const current = titleFilter.value;
+  titleFilter.innerHTML = '<option value="ALL">All Titles</option>' +
+    internshipTitlesDb.map(t => `<option value="${t.id}">${escapeHtml(t.title)}</option>`).join('');
+  if (current) titleFilter.value = current;
+}
+
+function renderICOverviewTable() {
+  const tbody = document.getElementById('ic-overview-tbody');
+  if (!tbody) return;
+
+  const { submissions = [], titles = [], students = [] } = icOverviewData;
+  const branchF = document.getElementById('ic-ov-filter-branch')?.value || 'ALL';
+  const batchF = document.getElementById('ic-ov-filter-batch')?.value || 'ALL';
+  const search = (document.getElementById('ic-ov-search')?.value || '').toLowerCase().trim();
+
+  // Filter students based on branch, batch, and search inputs first
+  let filteredStudents = students;
+  if (branchF !== 'ALL') filteredStudents = filteredStudents.filter(s => s.branch === branchF);
+  if (batchF !== 'ALL') filteredStudents = filteredStudents.filter(s => String(s.batchYear) === batchF || String(s.batch_year) === batchF);
+  if (search) filteredStudents = filteredStudents.filter(s =>
+    (s.roll || '').toLowerCase().includes(search) ||
+    (s.name || '').toLowerCase().includes(search)
+  );
+
+  // Group submissions by student roll
+  const submissionsMap = {}; // roll -> { title_id -> sub }
+  submissions.forEach(sub => {
+    if (sub.submitted) {
+      if (!submissionsMap[sub.student_roll]) {
+        submissionsMap[sub.student_roll] = {};
+      }
+      submissionsMap[sub.student_roll][sub.title_id] = sub;
+    }
+  });
+
+  // Only display students who have submitted at least one internship
+  let rows = filteredStudents.filter(student => submissionsMap[student.roll]);
+
+  // If a specific title filter is selected, filter the student rows to only those who submitted that title
+  const titleF = document.getElementById('ic-ov-filter-title')?.value || 'ALL';
+  if (titleF !== 'ALL') {
+    rows = rows.filter(student => submissionsMap[student.roll] && submissionsMap[student.roll][Number(titleF)]);
+  }
+
+  if (rows.length === 0) {
+    const colSpan = 4 + titles.length;
+    tbody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align:center;color:var(--text-secondary);padding:2rem;">No submissions found.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(student => {
+    const roll = student.roll;
+    const name = student.name || '--';
+    const branch = student.branch || '--';
+    const batchYear = student.batchYear || student.batch_year || '--';
+
+    let titleCellsHtml = '';
+    titles.forEach(title => {
+      const sub = submissionsMap[roll] ? submissionsMap[roll][title.id] : null;
+      if (!sub) {
+        titleCellsHtml += '<td><span class="no-internships-msg">—</span></td>';
+      } else {
+        const itemIds = sub.item_ids ? sub.item_ids.split(',').filter(Boolean).map(Number) : [];
+        const submittedItems = (title.items || []).filter(it => itemIds.includes(it.id));
+        const itemsHtml = submittedItems.length > 0
+          ? submittedItems.map(it => `<span class="internship-tag">${escapeHtml(it.name)}</span>`).join('')
+          : '<span style="color:var(--text-muted);">None</span>';
+        titleCellsHtml += `<td>${itemsHtml}</td>`;
+      }
+    });
+
+    return `<tr>
+      <td>${escapeHtml(roll)}</td>
+      <td>${escapeHtml(name)}</td>
+      <td>${branch}</td>
+      <td>${batchYear}</td>
+      ${titleCellsHtml}
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================
+// V2: STUDENT INTERNSHIP PORTAL
+// ============================================================
+
+function setupStudentInternshipEventListeners() {
+  // Internship tab button click
+  const btnInternships = document.getElementById('btn-widget-internships');
+  if (btnInternships) {
+    btnInternships.addEventListener('click', () => {
+      document.querySelectorAll('#nav-widgets .floating-widget-btn').forEach(b => b.classList.remove('active'));
+      btnInternships.classList.add('active');
+      switchView('view-student-internships');
+      loadStudentInternships();
+    });
+  }
+}
+
+async function loadStudentInternships() {
+  if (!currentUser || currentUser.role !== 'student') return;
+
+  try {
+    const [titlesRes, submissionsRes] = await Promise.all([
+      fetch('/api/internships/titles'),
+      fetch(`/api/internships/student/${currentUser.roll || currentUser.username}`)
+    ]);
+
+    const titlesData = await titlesRes.json();
+    const submissionsData = await submissionsRes.json();
+
+    internshipTitlesDb = titlesData.titles || [];
+    studentSubmissionsDb = submissionsData.submissions || [];
+
+    renderStudentInternshipProfile();
+    renderStudentInternshipTitles();
+  } catch (err) {
+    console.error('Load student internships error:', err);
+  }
+}
+
+function renderStudentInternshipProfile() {
+  if (!currentUser) return;
+  const name = currentUser.name || '--';
+  const roll = currentUser.roll || currentUser.username;
+  const branch = currentUser.branch || '--';
+  const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+
+  const avatarEl = document.getElementById('si-avatar');
+  const nameEl = document.getElementById('si-name');
+  const rollEl = document.getElementById('si-roll');
+  const branchEl = document.getElementById('si-branch');
+  const countEl = document.getElementById('si-submitted-count');
+
+  if (avatarEl) avatarEl.textContent = initials;
+  if (nameEl) nameEl.textContent = name;
+  if (rollEl) rollEl.textContent = roll;
+  if (branchEl) branchEl.textContent = branch;
+  if (countEl) countEl.textContent = studentSubmissionsDb.filter(s => s.submitted).length;
+}
+
+function getStudentBatch() {
+  const student = studentsDb.find(s => (s.roll || s.username) === (currentUser.roll || currentUser.username));
+  return student ? String(student.batchYear || student.batch_year || '') : '';
+}
+
+function renderStudentInternshipTitles() {
+  const container = document.getElementById('student-internship-titles-container');
+  if (!container) return;
+
+  const studentBranch = currentUser?.branch || '';
+  const studentBatch = getStudentBatch();
+
+  // Filter titles visible to this student
+  const visibleTitles = internshipTitlesDb.filter(t => {
+    const matchBranch = !t.filter_branch || t.filter_branch === 'ALL' || t.filter_branch.split(',').includes(studentBranch);
+    const matchBatch = !t.filter_batch || t.filter_batch === 'ALL' || t.filter_batch.split(',').includes(studentBatch);
+    return matchBranch && matchBatch;
+  });
+
+  const emptyEl = document.getElementById('student-internship-empty');
+
+  if (visibleTitles.length === 0) {
+    if (emptyEl) emptyEl.style.display = 'block';
+    // Remove old title cards
+    container.querySelectorAll('.internship-title-card').forEach(el => el.remove());
+    return;
+  }
+
+  if (emptyEl) emptyEl.style.display = 'none';
+
+  // Remove old cards first
+  container.querySelectorAll('.internship-title-card').forEach(el => el.remove());
+
+  const studentRoll = currentUser.roll || currentUser.username;
+
+  visibleTitles.forEach(title => {
+    const submission = studentSubmissionsDb.find(s => s.title_id === title.id);
+    const isLocked = submission && submission.submitted;
+    const checkedItemIds = isLocked && submission.item_ids
+      ? submission.item_ids.split(',').filter(Boolean).map(Number)
+      : [];
+
+    const card = document.createElement('div');
+    card.className = `internship-title-card${isLocked ? ' locked' : ''}`;
+    card.dataset.titleId = title.id;
+
+    const itemsHtml = (title.items || [])
+      .filter(item => !isLocked || checkedItemIds.includes(item.id))
+      .map(item => {
+        const isChecked = isLocked ? checkedItemIds.includes(item.id) : false;
+        return `<div class="internship-item-checkbox-row${isChecked ? ' checked' : ''}${isLocked ? ' locked-item' : ''}" data-item-id="${item.id}">
+          <input type="checkbox" id="intern-item-${title.id}-${item.id}" ${isChecked ? 'checked' : ''} ${isLocked ? 'disabled' : ''}>
+          <label for="intern-item-${title.id}-${item.id}">${escapeHtml(item.name)}</label>
+          <i class="fa-solid fa-circle-check internship-item-checked-icon"></i>
+        </div>`;
+      }).join('');
+
+    card.innerHTML = `
+      <div class="internship-title-card-header" style="display:flex; align-items:center; justify-content:space-between; gap:1rem;">
+        <div style="display:flex; align-items:center; gap:0.65rem;">
+          <h3><i class="fa-solid fa-briefcase"></i> ${escapeHtml(title.title)}</h3>
+          <button class="btn-ic-collapse" onclick="toggleInternshipCardCollapse(${title.id}, this)" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:0.85rem; display:flex; align-items:center; justify-content:center; padding: 0.2rem; transition: color 0.2s;" title="Toggle Collapse">
+            <i class="fa-solid fa-chevron-up"></i>
+          </button>
+        </div>
+        ${isLocked
+          ? `<span class="internship-locked-badge"><i class="fa-solid fa-lock"></i> Submitted</span>`
+          : `<span style="font-size:0.78rem;color:var(--text-secondary);">Select internships you completed</span>`
+        }
+      </div>
+      <div class="internship-items-grid">${itemsHtml}</div>
+      <button class="btn-internship-submit" data-title-id="${title.id}" ${isLocked ? 'disabled' : ''}>
+        ${isLocked ? '<i class="fa-solid fa-lock"></i> Submitted & Locked' : '<i class="fa-solid fa-paper-plane"></i> Submit Internship Details'}
+      </button>
+    `;
+
+    // Checkbox toggle visual
+    if (!isLocked) {
+      card.querySelectorAll('.internship-item-checkbox-row').forEach(row => {
+        row.addEventListener('click', (e) => {
+          if (e.target.tagName === 'INPUT') return;
+          const cb = row.querySelector('input[type="checkbox"]');
+          if (cb && !cb.disabled) {
+            cb.checked = !cb.checked;
+            row.classList.toggle('checked', cb.checked);
+          }
+        });
+        const cb = row.querySelector('input[type="checkbox"]');
+        if (cb) {
+          cb.addEventListener('change', () => {
+            row.classList.toggle('checked', cb.checked);
+          });
+        }
+      });
+    }
+
+    // Submit button
+    const submitBtn = card.querySelector('.btn-internship-submit');
+    if (submitBtn && !isLocked) {
+      submitBtn.addEventListener('click', async () => {
+        const checkedIds = [...card.querySelectorAll('.internship-item-checkbox-row input:checked')]
+          .map(cb => parseInt(cb.closest('[data-item-id]').dataset.itemId));
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Submitting...';
+
+        try {
+          const res = await fetch('/api/internships/submit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ studentRoll, titleId: title.id, itemIds: checkedIds })
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            alert(data.error || 'Submission failed.');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Submit Internship Details';
+            return;
+          }
+          alert('✅ Internship details submitted successfully! Your submission is now locked.');
+          await loadStudentInternships();
+        } catch (err) {
+          console.error('Submit internship error:', err);
+          alert('Failed to submit. Please try again.');
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Submit Internship Details';
+        }
+      });
+    }
+
+    container.insertBefore(card, document.getElementById('student-internship-empty'));
+  });
+}
+
+// ============================================================
+// V2: ADMIN INTERNSHIP MANAGEMENT
+// ============================================================
+
+function setupAdminInternshipEventListeners() {
+  ['admin-intern-filter-branch', 'admin-intern-filter-batch', 'admin-intern-search'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', renderAdminInternshipSubmissions);
+  });
+}
+
+async function loadAdminInternships() {
+  try {
+    const res = await fetch('/api/internships/overview');
+    const data = await res.json();
+    icOverviewData = data;
+    renderAdminInternshipTitles();
+    renderAdminInternshipSubmissions();
+  } catch (err) {
+    console.error('Admin internship load error:', err);
+  }
+}
+
+function renderAdminInternshipTitles() {
+  const el = document.getElementById('admin-internship-titles-list');
+  if (!el) return;
+  const { titles = [] } = icOverviewData;
+  if (titles.length === 0) {
+    el.innerHTML = '<div class="no-internships-msg">No internship titles published yet.</div>';
+    return;
+  }
+  el.innerHTML = titles.map(t => `
+    <div class="ic-published-title-card">
+      <div class="ic-published-title-header">
+        <strong>${escapeHtml(t.title)}</strong>
+        <span style="font-size:0.78rem;color:var(--text-secondary);">${t.filter_branch !== 'ALL' ? t.filter_branch : 'All'} · ${t.filter_batch !== 'ALL' ? t.filter_batch : 'All'}</span>
+      </div>
+      <div class="ic-published-items-list">
+        ${(t.items || []).map(item => `<span class="internship-tag">${escapeHtml(item.name)}</span>`).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderAdminInternshipSubmissions() {
+  const tbody = document.getElementById('admin-internship-submissions-tbody');
+  if (!tbody) return;
+
+  const { submissions = [], titles = [], students = [] } = icOverviewData;
+  const branchF = document.getElementById('admin-intern-filter-branch')?.value || 'ALL';
+  const batchF = document.getElementById('admin-intern-filter-batch')?.value || 'ALL';
+  const search = (document.getElementById('admin-intern-search')?.value || '').toLowerCase().trim();
+
+  const titleMap = Object.fromEntries(titles.map(t => [t.id, t]));
+  const studentMap = Object.fromEntries(students.map(s => [s.roll, s]));
+
+  let rows = submissions.map(sub => {
+    const student = studentMap[sub.student_roll] || {};
+    const title = titleMap[sub.title_id] || {};
+    const itemIds = sub.item_ids ? sub.item_ids.split(',').filter(Boolean).map(Number) : [];
+    const allItems = title.items || [];
+    const submittedItems = allItems.filter(it => itemIds.includes(it.id));
+    return { sub, student, title, submittedItems };
+  });
+
+  if (branchF !== 'ALL') rows = rows.filter(r => r.student.branch === branchF);
+  if (batchF !== 'ALL') rows = rows.filter(r =>
+    String(r.student.batchYear) === batchF || String(r.student.batch_year) === batchF
+  );
+  if (search) rows = rows.filter(r =>
+    (r.student.roll || r.sub.student_roll).toLowerCase().includes(search) ||
+    (r.student.name || '').toLowerCase().includes(search)
+  );
+
+  if (rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-secondary);padding:2rem;">No submissions found.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = rows.map(({ sub, student, title, submittedItems }) => {
+    const roll = student.roll || sub.student_roll;
+    const name = student.name || '--';
+    const branch = student.branch || '--';
+    const batch = student.batchYear || student.batch_year || '--';
+    const titleName = title.title || `#${sub.title_id}`;
+    const itemsHtml = submittedItems.length > 0
+      ? submittedItems.map(it => `<span class="internship-tag">${escapeHtml(it.name)}</span>`).join('')
+      : '<em style="color:var(--text-muted);">None</em>';
+    const submittedAt = sub.submitted_at ? new Date(sub.submitted_at).toLocaleString() : '--';
+
+    return `<tr>
+      <td>${escapeHtml(roll)}</td>
+      <td>${escapeHtml(name)}</td>
+      <td>${branch}</td>
+      <td>${batch}</td>
+      <td>${escapeHtml(titleName)}</td>
+      <td>${itemsHtml}</td>
+      <td>${submittedAt}</td>
+      <td><button class="btn btn-warning" style="font-size:0.75rem;padding:0.25rem 0.5rem;" onclick="adminEditInternshipSubmission('${roll}', ${sub.title_id})"><i class="fa-solid fa-pen"></i></button></td>
+    </tr>`;
+  }).join('');
+}
+
+async function adminEditInternshipSubmission(roll, titleId) {
+  const titleData = internshipTitlesDb.find(t => t.id === titleId) ||
+    (icOverviewData.titles || []).find(t => t.id === titleId);
+
+  if (!titleData) {
+    alert('Title data not found.');
+    return;
+  }
+
+  const itemNames = (titleData.items || []).map(it => `${it.id}: ${it.name}`).join('\n');
+  const currentSub = (icOverviewData.submissions || []).find(s => s.student_roll === roll && s.title_id === titleId);
+  const currentIds = currentSub?.item_ids || '';
+
+  const input = prompt(
+    `Admin Edit: Internship submissions for ${roll}\n\nAvailable items (ID: Name):\n${itemNames}\n\nEnter comma-separated item IDs to mark as done:\nCurrent: ${currentIds}`
+  );
+  if (input === null) return;
+
+  const newIds = input.split(',').map(s => s.trim()).filter(Boolean);
+
+  try {
+    const res = await fetch('/api/internships/admin/submission', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        studentRoll: roll,
+        titleId,
+        itemIds: newIds,
+        adminUser: currentUser?.username
+      })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert('Submission updated successfully!');
+      loadAdminInternships();
+    } else {
+      alert(data.error || 'Failed to update.');
+    }
+  } catch (err) {
+    console.error(err);
+    alert('Error updating submission.');
+  }
+}
+
+// ============================================================
+// V2: INTERNSHIP COLUMN IN STUDENT TABLES
+// ============================================================
+
+// Helper: build dynamic internship cells HTML (one cell per title) for a student
+function buildInternshipCells(studentRoll) {
+  const titles = internshipTitlesDb;
+  const submissionsSource = studentSubmissionsDb;
+
+  const studentSubs = submissionsSource.filter(s =>
+    s.student_roll === studentRoll && s.submitted
+  );
+
+  return titles.map(title => {
+    const sub = studentSubs.find(s => s.title_id === title.id);
+    if (!sub) return '<td><span class="no-internships-msg">—</span></td>';
+
+    const itemIds = sub.item_ids ? sub.item_ids.split(',').filter(Boolean).map(Number) : [];
+    const items = (title.items || []).filter(it => itemIds.includes(it.id));
+    const itemsHtml = items.map(it => `<span class="internship-tag">${escapeHtml(it.name)}</span>`).join('');
+    
+    return `<td>${itemsHtml || '<span class="no-internships-msg">—</span>'}</td>`;
+  }).join('');
+}
+
+// Rebuild headers for all student standings tables and coordinator overview table
+function rebuildAllTableHeaders() {
+  const titles = internshipTitlesDb;
+  
+  // 1. Rebuild main standings table headers
+  const mainTable = document.getElementById('tbody-students')?.closest('table');
+  if (mainTable) {
+    const thead = mainTable.querySelector('thead');
+    if (thead) {
+      let headersHtml = `
+        <tr>
+          <th>Rank</th>
+          <th>Roll Number</th>
+          <th>Name</th>
+          <th>Branch</th>
+          <th>Batch</th>
+          <th>Total Score</th>
+          <th>LeetCode</th>
+          <th>HackerRank</th>
+          <th>Codeforces</th>
+          <th>GFG</th>
+          <th>CodeChef</th>
+          <th>GitHub</th>
+      `;
+      titles.forEach(t => {
+        headersHtml += `<th>${escapeHtml(t.title.toUpperCase())}</th>`;
+      });
+      headersHtml += `</tr>`;
+      thead.innerHTML = headersHtml;
+    }
+  }
+
+  // 2. Rebuild branch standings table headers
+  const branchTable = document.getElementById('table-principal-branch-students')?.closest('table');
+  if (branchTable) {
+    const thead = branchTable.querySelector('thead');
+    if (thead) {
+      let headersHtml = `
+        <tr>
+          <th>Rank</th>
+          <th>Roll Number</th>
+          <th>Name</th>
+          <th>Branch</th>
+          <th>Batch</th>
+          <th>Total Score</th>
+          <th>LeetCode</th>
+          <th>HackerRank</th>
+          <th>Codeforces</th>
+          <th>GFG</th>
+          <th>CodeChef</th>
+          <th>GitHub</th>
+      `;
+      titles.forEach(t => {
+        headersHtml += `<th>${escapeHtml(t.title.toUpperCase())}</th>`;
+      });
+      headersHtml += `</tr>`;
+      thead.innerHTML = headersHtml;
+    }
+  }
+
+  // 3. Rebuild IC Overview table headers
+  const icTable = document.getElementById('ic-overview-tbody')?.closest('table');
+  if (icTable) {
+    const thead = icTable.querySelector('thead');
+    if (thead) {
+      let headersHtml = `
+        <tr>
+          <th>Roll</th>
+          <th>Name</th>
+          <th>Branch</th>
+          <th>Batch</th>
+      `;
+      titles.forEach(t => {
+        headersHtml += `<th>${escapeHtml(t.title.toUpperCase())}</th>`;
+      });
+      headersHtml += `</tr>`;
+      thead.innerHTML = headersHtml;
+    }
+  }
+}
+
+// Utility: escape HTML
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+async function loadGlobalInternshipData() {
+  try {
+    const res = await fetch('/api/internships/overview');
+    if (res.ok) {
+      const data = await res.json();
+      icOverviewData = data;
+      internshipTitlesDb = data.titles || [];
+      studentSubmissionsDb = data.submissions || [];
+      rebuildAllTableHeaders();
+    }
+  } catch (err) {
+    console.error('Error pre-loading internship data:', err);
+  }
+}
+
+
+// ========== V2: CUSTOM MULTISELECT JS AND WINDOW BINDINGS ==========
+function getMultiselectValues(optionsId) {
+  const optionsDiv = document.getElementById(optionsId);
+  if (!optionsDiv) return 'ALL';
+  const checkedBoxes = Array.from(optionsDiv.querySelectorAll('input[type="checkbox"]:checked'));
+  const values = checkedBoxes.map(cb => cb.value);
+  if (values.includes('ALL')) return 'ALL';
+  if (values.length === 0) return 'ALL';
+  return values.join(',');
+}
+
+function toggleMultiselect(optionsId, event) {
+  if (event) event.stopPropagation();
+  document.querySelectorAll('.multiselect-options').forEach(el => {
+    if (el.id !== optionsId) el.classList.remove('open');
+  });
+  const el = document.getElementById(optionsId);
+  if (el) el.classList.toggle('open');
+}
+
+function handleMultiselectAll(allCb, optionsId, labelId, noun) {
+  const optionsDiv = document.getElementById(optionsId);
+  if (!optionsDiv) return;
+  const checkboxes = optionsDiv.querySelectorAll('input[type="checkbox"]');
+  checkboxes.forEach(cb => {
+    if (cb !== allCb) {
+      cb.checked = false;
+    }
+  });
+  if (!allCb.checked) {
+    allCb.checked = true;
+  }
+  document.getElementById(labelId).textContent = `All ${noun}`;
+}
+
+function handleMultiselectChange(optionsId, labelId, noun) {
+  const optionsDiv = document.getElementById(optionsId);
+  if (!optionsDiv) return;
+  const allCb = optionsDiv.querySelector('input[value="ALL"]');
+  const checkedBoxes = Array.from(optionsDiv.querySelectorAll('input[type="checkbox"]:checked')).filter(cb => cb.value !== 'ALL');
+  
+  if (checkedBoxes.length > 0) {
+    if (allCb) allCb.checked = false;
+    const labelText = checkedBoxes.map(cb => cb.value).join(', ');
+    document.getElementById(labelId).textContent = labelText;
+  } else {
+    if (allCb) allCb.checked = true;
+    document.getElementById(labelId).textContent = `All ${noun}`;
+  }
+}
+
+// Close dropdowns on clicking outside
+document.addEventListener('click', () => {
+  document.querySelectorAll('.multiselect-options').forEach(el => el.classList.remove('open'));
+});
+
+// Expose internal functions to the global window object for inline onclick attributes
+window.deleteInternshipTitle = deleteInternshipTitle;
+window.deleteInternshipItem = deleteInternshipItem;
+window.removeDraftItem = removeDraftItem;
+window.adminEditInternshipSubmission = adminEditInternshipSubmission;
+window.toggleMultiselect = toggleMultiselect;
+window.handleMultiselectAll = handleMultiselectAll;
+window.handleMultiselectChange = handleMultiselectChange;
+
+// ========== V2: TOGGLE COLLAPSE FUNCTION ==========
+function toggleInternshipCardCollapse(titleId, btn) {
+  const card = btn.closest('.internship-title-card');
+  if (!card) return;
+  const grid = card.querySelector('.internship-items-grid');
+  const submitBtn = card.querySelector('.btn-internship-submit');
+  const icon = btn.querySelector('i');
+  
+  if (grid.style.display === 'none') {
+    grid.style.display = '';
+    if (submitBtn) submitBtn.style.display = '';
+    if (icon) {
+      icon.className = 'fa-solid fa-chevron-up';
+    }
+  } else {
+    grid.style.display = 'none';
+    if (submitBtn) submitBtn.style.display = 'none';
+    if (icon) {
+      icon.className = 'fa-solid fa-chevron-down';
+    }
+  }
+}
+window.toggleInternshipCardCollapse = toggleInternshipCardCollapse;
+
+// ========== V2: EDIT PUBLISHED TITLE & ADD ITEMS ==========
+async function editPublishedTitle(titleId, currentTitle) {
+  const newTitle = prompt('Edit Title Name (leave blank or cancel to keep current):', currentTitle);
+  const coordinatorName = currentUser ? currentUser.name : 'Coordinator';
+
+  if (newTitle !== null && newTitle.trim() !== '' && newTitle.trim() !== currentTitle) {
+    try {
+      const res = await fetch(`/api/internships/titles/${titleId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newTitle.trim(), coordinator: coordinatorName })
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        alert(errData.error || 'Failed to update title.');
+      }
+    } catch (err) {
+      console.error('Update title error:', err);
+      alert('Failed to update title.');
+    }
+  }
+
+  const newItemName = prompt('Add a new internship entry (company/project) to this title (leave blank or cancel to skip):');
+  if (newItemName !== null && newItemName.trim() !== '') {
+    try {
+      const res = await fetch(`/api/internships/titles/${titleId}/items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newItemName.trim() })
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        alert(errData.error || 'Failed to add item.');
+      }
+    } catch (err) {
+      console.error('Add item error:', err);
+      alert('Failed to add item.');
+    }
+  }
+
+  await loadInternshipTitles();
+}
+window.editPublishedTitle = editPublishedTitle;
+
+// ========== V2: CSV EXPORTS AND INTERNSHIP UTILITIES ==========
+function getStudentInternshipsText(studentRoll) {
+  const titlesSource = internshipTitlesDb.length > 0 ? internshipTitlesDb : (icOverviewData.titles || []);
+  const submissionsSource = studentSubmissionsDb.length > 0 ? studentSubmissionsDb : (icOverviewData.submissions || []);
+
+  const studentSubs = submissionsSource.filter(s => s.student_roll === studentRoll && s.submitted);
+  if (studentSubs.length === 0) return 'None';
+
+  return studentSubs.map(sub => {
+    const title = titlesSource.find(t => t.id === sub.title_id);
+    if (!title) return '';
+    const itemIds = sub.item_ids ? sub.item_ids.split(',').filter(Boolean).map(Number) : [];
+    const items = (title.items || []).filter(it => itemIds.includes(it.id));
+    const itemsText = items.map(it => it.name).join('; ');
+    return `${title.title} (${itemsText || 'None'})`;
+  }).filter(Boolean).join(' | ');
+}
+
+function handleICCSVDownload() {
+  const { submissions = [], titles = [], students = [] } = icOverviewData;
+  const branchF = document.getElementById('ic-ov-filter-branch')?.value || 'ALL';
+  const batchF = document.getElementById('ic-ov-filter-batch')?.value || 'ALL';
+  const search = (document.getElementById('ic-ov-search')?.value || '').toLowerCase().trim();
+
+  let filteredStudents = students;
+  if (branchF !== 'ALL') filteredStudents = filteredStudents.filter(s => s.branch === branchF);
+  if (batchF !== 'ALL') filteredStudents = filteredStudents.filter(s => String(s.batchYear) === batchF || String(s.batch_year) === batchF);
+  if (search) filteredStudents = filteredStudents.filter(s =>
+    (s.roll || '').toLowerCase().includes(search) ||
+    (s.name || '').toLowerCase().includes(search)
+  );
+
+  const submissionsMap = {};
+  submissions.forEach(sub => {
+    if (sub.submitted) {
+      if (!submissionsMap[sub.student_roll]) {
+        submissionsMap[sub.student_roll] = {};
+      }
+      submissionsMap[sub.student_roll][sub.title_id] = sub;
+    }
+  });
+
+  let rows = filteredStudents.filter(student => submissionsMap[student.roll]);
+
+  const titleF = document.getElementById('ic-ov-filter-title')?.value || 'ALL';
+  if (titleF !== 'ALL') {
+    rows = rows.filter(student => submissionsMap[student.roll] && submissionsMap[student.roll][Number(titleF)]);
+  }
+
+  // Build CSV Header
+  let titleHeaders = titles.map(t => `"${t.title.toUpperCase()}"`).join(',');
+  let csvContent = `Roll Number,Name,Branch,Batch,${titleHeaders}\n`;
+
+  rows.forEach(student => {
+    const roll = student.roll;
+    const name = student.name || '--';
+    const branch = student.branch || '--';
+    const batchYear = student.batchYear || student.batch_year || '--';
+
+    let titleValues = [];
+    titles.forEach(title => {
+      const sub = submissionsMap[roll] ? submissionsMap[roll][title.id] : null;
+      if (!sub) {
+        titleValues.push('—');
+      } else {
+        const itemIds = sub.item_ids ? sub.item_ids.split(',').filter(Boolean).map(Number) : [];
+        const submittedItems = (title.items || []).filter(it => itemIds.includes(it.id));
+        const itemsText = submittedItems.map(it => it.name).join('; ') || 'None';
+        titleValues.push(itemsText);
+      }
+    });
+
+    let rowValues = titleValues.map(v => `"${v}"`).join(',');
+    csvContent += `"${roll}","${name}","${branch}","${batchYear}",${rowValues}\n`;
+  });
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', 'internship_coordinator_overview_report.csv');
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+window.getStudentInternshipsText = getStudentInternshipsText;
+window.handleICCSVDownload = handleICCSVDownload;

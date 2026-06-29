@@ -860,10 +860,230 @@ app.post('/api/admin/refresh', async (req, res) => {
   }
 });
 
+// =================== OTP VERIFICATION ===================
+
+// In-memory OTP store: email -> { otp, expiresAt }
+const otpStore = new Map();
+
+function generateOTP() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+// POST /api/auth/send-otp
+app.post('/api/auth/send-otp', async (req, res) => {
+  const { email } = req.body;
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: 'A valid email address is required.' });
+  }
+  const otp = generateOTP();
+  const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+  console.log(`[OTP DevLog] Generated OTP for ${email}: ${otp}`);
+  otpStore.set(email.toLowerCase(), { otp, expiresAt });
+  const hasSmtpConfig = process.env.SMTP_USER && process.env.SMTP_PASS;
+  if (hasSmtpConfig) {
+    try {
+      await smtpTransporter.sendMail({
+        from: `"Ideal Code Tracker" <${process.env.SMTP_USER}>`,
+        to: email,
+        subject: 'Your OTP Verification Code — Ideal Code Tracker',
+        html: `<div style="font-family:Arial,sans-serif;line-height:1.6;color:#333;">
+          <h2 style="color:#6366f1;">Email Verification</h2>
+          <p>Your one-time password (OTP) for Ideal Code Tracker is:</p>
+          <div style="background:#f3f4f6;border-left:4px solid #6366f1;padding:15px 20px;border-radius:6px;margin:15px 0;font-size:2rem;font-weight:700;letter-spacing:8px;color:#4f46e5;">${otp}</div>
+          <p style="font-size:0.85em;color:#6b7280;">This OTP is valid for <strong>10 minutes</strong>. Do not share it with anyone.</p>
+        </div>`
+      });
+      console.log(`[OTP] Sent OTP to ${email}`);
+    } catch (err) {
+      console.error('[OTP] Email send failed:', err.message);
+      return res.status(500).json({ error: 'Failed to send OTP email. Please try again.' });
+    }
+  } else {
+    console.log(`[OTP Sim] OTP for ${email}: ${otp}`);
+  }
+  res.json({ message: 'OTP sent successfully. Please check your email.' });
+});
+
+// POST /api/auth/verify-otp
+app.post('/api/auth/verify-otp', (req, res) => {
+  const { email, otp } = req.body;
+  if (!email || !otp) {
+    return res.status(400).json({ error: 'Email and OTP are required.' });
+  }
+  const record = otpStore.get(email.toLowerCase());
+  if (!record) {
+    return res.status(400).json({ error: 'No OTP found for this email. Please request a new one.' });
+  }
+  if (Date.now() > record.expiresAt) {
+    otpStore.delete(email.toLowerCase());
+    return res.status(400).json({ error: 'OTP has expired. Please request a new one.' });
+  }
+  if (record.otp !== otp.trim()) {
+    return res.status(400).json({ error: 'Invalid OTP. Please try again.' });
+  }
+  otpStore.delete(email.toLowerCase());
+  res.json({ message: 'Email verified successfully.' });
+});
+
+// =================== INTERNSHIP APIs ===================
+
+// GET /api/internships/titles — get all published titles with items
+app.get('/api/internships/titles', async (req, res) => {
+  try {
+    const titles = await db.getInternshipTitles();
+    res.json({ titles });
+  } catch (err) {
+    console.error('Get internship titles error:', err);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+// POST /api/internships/titles — Coordinator/Admin publish a new title
+app.post('/api/internships/titles', async (req, res) => {
+  const { title, coordinator, filterBranch, filterBatch } = req.body;
+  if (!title || !coordinator) {
+    return res.status(400).json({ error: 'Title and coordinator are required.' });
+  }
+  try {
+    const newId = await db.createInternshipTitle(title, coordinator, filterBranch || 'ALL', filterBatch || 'ALL');
+    await db.addAuditLog(coordinator, `Published internship title: "${title}" (Branch: ${filterBranch || 'ALL'}, Batch: ${filterBatch || 'ALL'})`);
+    res.status(201).json({ message: 'Title published successfully', id: newId });
+  } catch (err) {
+    console.error('Create internship title error:', err);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+// PUT /api/internships/titles/:id — Update a title name
+app.put('/api/internships/titles/:id', async (req, res) => {
+  const { id } = req.params;
+  const { title, coordinator } = req.body;
+  if (!title) {
+    return res.status(400).json({ error: 'Title is required.' });
+  }
+  try {
+    const success = await db.updateInternshipTitle(id, title);
+    if (success) {
+      await db.addAuditLog(coordinator || 'coordinator', `Updated internship title ID: ${id} to name: ${title}`);
+      res.json({ message: 'Title updated successfully.' });
+    } else {
+      res.status(404).json({ error: 'Title not found.' });
+    }
+  } catch (err) {
+    console.error('Update internship title error:', err);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+// DELETE /api/internships/titles/:id — Delete a title (and all its items)
+app.delete('/api/internships/titles/:id', async (req, res) => {
+  const { id } = req.params;
+  const { coordinator } = req.query;
+  try {
+    await db.deleteInternshipTitle(id);
+    await db.addAuditLog(coordinator || 'coordinator', `Deleted internship title ID: ${id}`);
+    res.json({ message: 'Title deleted successfully.' });
+  } catch (err) {
+    console.error('Delete internship title error:', err);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+// POST /api/internships/titles/:id/items — Add internship item to a title
+app.post('/api/internships/titles/:id/items', async (req, res) => {
+  const { id } = req.params;
+  const { name } = req.body;
+  if (!name) {
+    return res.status(400).json({ error: 'Internship name is required.' });
+  }
+  try {
+    const newItemId = await db.addInternshipItem(id, name);
+    res.status(201).json({ message: 'Item added successfully', id: newItemId });
+  } catch (err) {
+    console.error('Add internship item error:', err);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+// DELETE /api/internships/items/:id — Delete an internship item
+app.delete('/api/internships/items/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await db.deleteInternshipItem(id);
+    res.json({ message: 'Item deleted successfully.' });
+  } catch (err) {
+    console.error('Delete internship item error:', err);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+// GET /api/internships/student/:roll — Get student's submissions
+app.get('/api/internships/student/:roll', async (req, res) => {
+  const { roll } = req.params;
+  try {
+    const submissions = await db.getStudentSubmissions(roll.toUpperCase());
+    res.json({ submissions });
+  } catch (err) {
+    console.error('Get student submissions error:', err);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+// POST /api/internships/submit — Student submits tick-marked internships
+app.post('/api/internships/submit', async (req, res) => {
+  const { studentRoll, titleId, itemIds } = req.body;
+  if (!studentRoll || !titleId) {
+    return res.status(400).json({ error: 'studentRoll and titleId are required.' });
+  }
+  try {
+    await db.submitStudentInternships(studentRoll.toUpperCase(), titleId, itemIds || []);
+    await db.addAuditLog(studentRoll.toUpperCase(), `Submitted internship form for title ID: ${titleId}`);
+    res.json({ message: 'Internship submitted successfully.' });
+  } catch (err) {
+    console.error('Student internship submit error:', err);
+    if (err.message.includes('Already submitted')) {
+      return res.status(409).json({ error: err.message });
+    }
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+// GET /api/internships/overview — Coordinator/Admin: all student submissions
+app.get('/api/internships/overview', async (req, res) => {
+  try {
+    const [submissions, titles, students] = await Promise.all([
+      db.getAllInternshipSubmissions(),
+      db.getInternshipTitles(),
+      db.getAllStudents()
+    ]);
+    res.json({ submissions, titles, students });
+  } catch (err) {
+    console.error('Internship overview error:', err);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+// PUT /api/internships/admin/submission — Admin override a student's submission
+app.put('/api/internships/admin/submission', async (req, res) => {
+  const { studentRoll, titleId, itemIds, adminUser } = req.body;
+  if (!studentRoll || !titleId) {
+    return res.status(400).json({ error: 'studentRoll and titleId are required.' });
+  }
+  try {
+    await db.adminUpdateStudentSubmission(studentRoll.toUpperCase(), titleId, itemIds || []);
+    await logAdminAction(adminUser || 'admin', `Admin override submission for ${studentRoll} on title ID: ${titleId}`);
+    res.json({ message: 'Submission updated by admin.' });
+  } catch (err) {
+    console.error('Admin submission override error:', err);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
 // Serve frontend for any other routes
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
+
 
 // Automated daily scraping at 9:00 PM IST (15:30 UTC)
 async function runScheduledSync() {
