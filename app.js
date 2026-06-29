@@ -3342,8 +3342,7 @@ function renderICOverviewTable() {
   }
 
   if (rows.length === 0) {
-    const colSpan = 4 + titles.length;
-    tbody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align:center;color:var(--text-secondary);padding:2rem;">No submissions found.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-secondary);padding:2rem;">No submissions found.</td></tr>`;
     return;
   }
 
@@ -3353,19 +3352,16 @@ function renderICOverviewTable() {
     const branch = student.branch || '--';
     const batchYear = student.batchYear || student.batch_year || '--';
 
-    let titleCellsHtml = '';
-    titles.forEach(title => {
-      const sub = submissionsMap[roll] ? submissionsMap[roll][title.id] : null;
-      if (!sub) {
-        titleCellsHtml += '<td><span class="no-internships-msg">—</span></td>';
-      } else {
-        const itemIds = sub.item_ids ? sub.item_ids.split(',').filter(Boolean).map(Number) : [];
-        const submittedItems = (title.items || []).filter(it => itemIds.includes(it.id));
-        const itemsHtml = submittedItems.length > 0
-          ? submittedItems.map(it => `<span class="internship-tag">${escapeHtml(it.name)}</span>`).join('')
-          : '<span style="color:var(--text-muted);">None</span>';
-        titleCellsHtml += `<td>${itemsHtml}</td>`;
-      }
+    const studentSubs = submissions.filter(s => s.student_roll === roll && s.submitted);
+    const tags = [];
+    studentSubs.forEach(sub => {
+      const title = titles.find(t => t.id === sub.title_id);
+      if (!title) return;
+      const itemIds = sub.item_ids ? sub.item_ids.split(',').filter(Boolean).map(Number) : [];
+      const items = (title.items || []).filter(it => itemIds.includes(it.id));
+      items.forEach(it => {
+        tags.push(`<span class="internship-tag" title="${escapeHtml(title.title)}">${escapeHtml(it.name)}</span>`);
+      });
     });
 
     return `<tr>
@@ -3373,7 +3369,7 @@ function renderICOverviewTable() {
       <td>${escapeHtml(name)}</td>
       <td>${branch}</td>
       <td>${batchYear}</td>
-      ${titleCellsHtml}
+      <td>${tags.join('') || '<span class="no-internships-msg">—</span>'}</td>
     </tr>`;
   }).join('');
 }
@@ -3722,106 +3718,27 @@ async function adminEditInternshipSubmission(roll, titleId) {
 // V2: INTERNSHIP COLUMN IN STUDENT TABLES
 // ============================================================
 
-// Helper: build dynamic internship cells HTML (one cell per title) for a student
+// Helper: build unified internship cell HTML for a student
 function buildInternshipCells(studentRoll) {
-  const titles = internshipTitlesDb;
-  const submissionsSource = studentSubmissionsDb;
+  const submissionsSource = studentSubmissionsDb || [];
+  const titles = internshipTitlesDb || [];
 
   const studentSubs = submissionsSource.filter(s =>
     s.student_roll === studentRoll && s.submitted
   );
 
-  return titles.map(title => {
-    const sub = studentSubs.find(s => s.title_id === title.id);
-    if (!sub) return '<td><span class="no-internships-msg">—</span></td>';
-
+  const tags = [];
+  studentSubs.forEach(sub => {
+    const title = titles.find(t => t.id === sub.title_id);
+    if (!title) return;
     const itemIds = sub.item_ids ? sub.item_ids.split(',').filter(Boolean).map(Number) : [];
     const items = (title.items || []).filter(it => itemIds.includes(it.id));
-    const itemsHtml = items.map(it => `<span class="internship-tag">${escapeHtml(it.name)}</span>`).join('');
-    
-    return `<td>${itemsHtml || '<span class="no-internships-msg">—</span>'}</td>`;
-  }).join('');
-}
+    items.forEach(it => {
+      tags.push(`<span class="internship-tag" title="${escapeHtml(title.title)}">${escapeHtml(it.name)}</span>`);
+    });
+  });
 
-// Rebuild headers for all student standings tables and coordinator overview table
-function rebuildAllTableHeaders() {
-  const titles = internshipTitlesDb;
-  
-  // 1. Rebuild main standings table headers
-  const mainTable = document.getElementById('tbody-students')?.closest('table');
-  if (mainTable) {
-    const thead = mainTable.querySelector('thead');
-    if (thead) {
-      let headersHtml = `
-        <tr>
-          <th>Rank</th>
-          <th>Roll Number</th>
-          <th>Name</th>
-          <th>Branch</th>
-          <th>Batch</th>
-          <th>Total Score</th>
-          <th>LeetCode</th>
-          <th>HackerRank</th>
-          <th>Codeforces</th>
-          <th>GFG</th>
-          <th>CodeChef</th>
-          <th>GitHub</th>
-      `;
-      titles.forEach(t => {
-        headersHtml += `<th>${escapeHtml(t.title.toUpperCase())}</th>`;
-      });
-      headersHtml += `</tr>`;
-      thead.innerHTML = headersHtml;
-    }
-  }
-
-  // 2. Rebuild branch standings table headers
-  const branchTable = document.getElementById('table-principal-branch-students')?.closest('table');
-  if (branchTable) {
-    const thead = branchTable.querySelector('thead');
-    if (thead) {
-      let headersHtml = `
-        <tr>
-          <th>Rank</th>
-          <th>Roll Number</th>
-          <th>Name</th>
-          <th>Branch</th>
-          <th>Batch</th>
-          <th>Total Score</th>
-          <th>LeetCode</th>
-          <th>HackerRank</th>
-          <th>Codeforces</th>
-          <th>GFG</th>
-          <th>CodeChef</th>
-          <th>GitHub</th>
-      `;
-      titles.forEach(t => {
-        headersHtml += `<th>${escapeHtml(t.title.toUpperCase())}</th>`;
-      });
-      headersHtml += `</tr>`;
-      thead.innerHTML = headersHtml;
-    }
-  }
-
-  // 3. Rebuild IC Overview table headers
-  const icTable = document.getElementById('ic-overview-tbody')?.closest('table');
-  if (icTable) {
-    const thead = icTable.querySelector('thead');
-    if (thead) {
-      let headersHtml = `
-        <tr>
-          <th>Roll</th>
-          <th>Name</th>
-          <th>Branch</th>
-          <th>Batch</th>
-      `;
-      titles.forEach(t => {
-        headersHtml += `<th>${escapeHtml(t.title.toUpperCase())}</th>`;
-      });
-      headersHtml += `</tr>`;
-      thead.innerHTML = headersHtml;
-    }
-  }
+  return `<td>${tags.join('') || '<span class="no-internships-msg">—</span>'}</td>`;
 }
 
 // Utility: escape HTML
@@ -3843,7 +3760,6 @@ async function loadGlobalInternshipData() {
       icOverviewData = data;
       internshipTitlesDb = data.titles || [];
       studentSubmissionsDb = data.submissions || [];
-      rebuildAllTableHeaders();
     }
   } catch (err) {
     console.error('Error pre-loading internship data:', err);
