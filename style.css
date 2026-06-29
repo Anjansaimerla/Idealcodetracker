@@ -1499,3 +1499,102 @@ dialog::backdrop {
   height: 15px;
   cursor: pointer;
 }
+
+/* ========== V2: RESPONSIVE MEDIA QUERIES OVERRIDES ========== */
+@media (max-width: 768px) {
+  /* 1. Header Navigation Layout Grid */
+  .nav-container {
+    display: grid !important;
+    grid-template-columns: auto auto !important;
+    grid-template-rows: auto auto !important;
+    height: auto !important;
+    min-height: 80px !important;
+    padding: 0.5rem 1rem !important;
+    row-gap: 0.5rem !important;
+  }
+
+  .logo {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    justify-self: start !important;
+    align-self: center !important;
+  }
+
+  .user-badge {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    justify-self: end !important;
+    align-self: center !important;
+    padding: 0.35rem 0.75rem !important;
+    gap: 0.5rem !important;
+  }
+
+  .nav-menu-bar {
+    grid-column: 1 / span 2 !important;
+    grid-row: 2 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    padding-bottom: 4px !important;
+  }
+
+  /* 2. Main View & Admin Content Offsets */
+  main {
+    margin-top: 130px !important;
+    min-height: calc(100vh - 130px) !important;
+    padding: 1rem !important;
+  }
+
+  .admin-wrapper {
+    margin-top: 130px !important;
+    padding: 0 0.5rem !important;
+  }
+
+  .ic-wrapper {
+    padding: 1rem 0.5rem !important;
+  }
+
+  /* 3. Popups and Dialogs padding */
+  dialog {
+    padding: 1.5rem !important;
+    width: 95% !important;
+  }
+
+  /* 4. Floating Batch selector Widget */
+  .floating-batch-widget {
+    padding: 0.3rem 0.6rem !important;
+    gap: 0.25rem !important;
+    margin: 1rem auto !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+  }
+
+  .batch-btn {
+    padding: 0.35rem 0.75rem !important;
+    font-size: 0.78rem !important;
+  }
+}
+
+@media (max-width: 900px) {
+  /* 5. Student Internship Stacking Grid Layout Order */
+  .student-internship-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .student-internship-profile-card {
+    position: static !important;
+    grid-row: 1 !important;
+  }
+  .internship-titles-container {
+    grid-row: 2 !important;
+  }
+
+  /* 6. Coordinator Publish Stacking Grid Layout Order */
+  .ic-publish-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .ic-publish-right {
+    grid-row: 1 !important;
+  }
+  .ic-student-list-panel {
+    grid-row: 2 !important;
+  }
+}
