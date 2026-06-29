@@ -2396,6 +2396,22 @@ async function handleAdminAccessSubmit(e) {
 }
 
 // 10. ASSIGNMENTS ENGINE
+async function deleteAdminAssignment(id) {
+  try {
+    const res = await fetch(`/api/admin/assignments/${id}?adminUser=${currentUser ? currentUser.username : 'admin'}`, {
+      method: 'DELETE'
+    });
+    const data = await res.json();
+    if (res.ok) {
+      renderAdminAssignments();
+    } else {
+      alert(data.error || 'Failed to delete assignment.');
+    }
+  } catch (err) {
+    console.error('Delete assignment error:', err);
+  }
+}
+
 async function renderAdminAssignments() {
   try {
     const res = await fetch('/api/admin/assignments');
@@ -2411,18 +2427,34 @@ async function renderAdminAssignments() {
     }
 
     assignments.forEach(a => {
-      container.innerHTML += `
-        <div class="glass-panel" style="padding: 1rem; border-color: rgba(255,255,255,0.05); margin-bottom: 0.5rem;">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <strong>${a.title}</strong>
-            <span style="font-size: 0.8rem; color: var(--danger); font-weight: 600;">Due: ${a.deadline}</span>
-          </div>
-          <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem; line-height: 1.4;">${a.description}</p>
-          <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
-            <span>Target Batches: ${a.target_batches}</span> | <span>Target Branches: ${a.target_branches}</span>
-          </div>
+      const div = document.createElement('div');
+      div.className = 'glass-panel';
+      div.style.position = 'relative';
+      div.style.padding = '1.2rem';
+      div.style.borderColor = 'rgba(255,255,255,0.05)';
+      div.style.marginBottom = '0.75rem';
+      
+      div.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-right: 2.5rem;">
+          <strong>${escapeHtml(a.title)}</strong>
+          <span style="font-size: 0.8rem; color: var(--danger); font-weight: 600;">Due: ${escapeHtml(a.deadline)}</span>
         </div>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem; line-height: 1.4; padding-right: 2.5rem; white-space: pre-wrap;">${escapeHtml(a.description)}</p>
+        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
+          <span>Target Batches: ${escapeHtml(a.target_batches)}</span> | <span>Target Branches: ${escapeHtml(a.target_branches)}</span>
+        </div>
+        <button class="btn-action-small delete-assignment-btn" title="Delete assignment" style="position: absolute; right: 1rem; top: 1rem; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171; border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;">
+          <i class="fa-solid fa-trash" style="font-size: 0.75rem;"></i>
+        </button>
       `;
+      
+      div.querySelector('.delete-assignment-btn').addEventListener('click', async () => {
+        if (confirm(`Are you sure you want to delete this assignment: "${a.title}"?`)) {
+          await deleteAdminAssignment(a.id);
+        }
+      });
+      
+      container.appendChild(div);
     });
   } catch (err) {
     console.error(err);
@@ -2500,15 +2532,54 @@ async function loadStudentAssignments() {
       list.innerHTML = activeAssignments.map(a => `
         <div style="background: rgba(255,255,255,0.02); border-left: 3px solid var(--accent); padding: 0.8rem 1rem; border-radius: var(--radius-sm);">
           <div style="display: flex; justify-content: space-between; font-weight: 600;">
-            <span>${a.title}</span>
-            <span style="color: var(--danger); font-size: 0.8rem;">Deadline: ${a.deadline}</span>
+            <span>${escapeHtml(a.title)}</span>
+            <span style="color: var(--danger); font-size: 0.8rem;">Deadline: ${escapeHtml(a.deadline)}</span>
           </div>
-          <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.35rem; line-height: 1.4;">${a.description}</p>
+          <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.35rem; line-height: 1.4; white-space: pre-wrap;">${escapeHtml(a.description)}</p>
         </div>
       `).join('');
       card.style.display = 'block';
     } else {
       card.style.display = 'none';
+    }
+
+    // High visibility unread assignment popup logic for students
+    if (currentUser && currentUser.role === 'student' && activeAssignments.length > 0) {
+      const seenAssignmentIds = JSON.parse(localStorage.getItem('seen_assignment_ids') || '[]');
+      const unreadAssignments = activeAssignments.filter(a => !seenAssignmentIds.includes(a.id));
+
+      if (unreadAssignments.length > 0) {
+        const unreadContainer = document.getElementById('unread-assignments-container');
+        if (unreadContainer) {
+          unreadContainer.innerHTML = unreadAssignments.map(a => `
+            <div class="glass-panel" style="border: 1px solid rgba(255,255,255,0.05); border-left: 4px solid var(--accent); border-radius: 8px; padding: 1rem; background: rgba(255,255,255,0.02);">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <strong style="color: var(--text-main); font-size: 1rem;">${escapeHtml(a.title)}</strong>
+                <span style="color: var(--danger); font-size: 0.8rem; font-weight: 600;">Deadline: ${escapeHtml(a.deadline)}</span>
+              </div>
+              <div class="announcement-msg" style="margin-top: 0.75rem; font-size: 0.88rem; color: var(--text-secondary); line-height: 1.5; white-space: pre-wrap;">${escapeHtml(a.description)}</div>
+            </div>
+          `).join('');
+
+          const popupDialog = document.getElementById('dialog-assignment-popup');
+          if (popupDialog) {
+            popupDialog.showModal();
+
+            const ackBtn = document.getElementById('btn-acknowledge-assignments');
+            if (ackBtn) {
+              ackBtn.onclick = () => {
+                unreadAssignments.forEach(a => {
+                  if (!seenAssignmentIds.includes(a.id)) {
+                    seenAssignmentIds.push(a.id);
+                  }
+                });
+                localStorage.setItem('seen_assignment_ids', JSON.stringify(seenAssignmentIds));
+                popupDialog.close();
+              };
+            }
+          }
+        }
+      }
     }
   } catch (err) {
     console.error('Failed to load student assignments:', err);

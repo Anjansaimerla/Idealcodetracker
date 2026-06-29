@@ -1781,6 +1781,25 @@
     </div>
   </dialog>
 
+  <!-- DIALOG 14: NEW ASSIGNMENT POPUP -->
+  <dialog id="dialog-assignment-popup" closedby="none" style="width: 90%; max-width: 520px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(15, 23, 42, 0.96); backdrop-filter: blur(12px); color: #fff; padding: 0; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+    <div class="modal-header" style="background: rgba(99, 102, 241, 0.1); border-bottom: 1px solid rgba(255,255,255,0.08); padding: 1.2rem; display: flex; justify-content: space-between; align-items: center;">
+      <h3 style="margin: 0; display: flex; align-items: center; gap: 0.6rem; color: var(--accent); font-size: 1.15rem; font-weight: 700;">
+        <i class="fa-solid fa-file-signature animate-bounce"></i> New Assignment Posted
+      </h3>
+    </div>
+    <div class="modal-body" style="padding: 1.5rem; max-height: 380px; overflow-y: auto;">
+      <div id="unread-assignments-container" style="display: flex; flex-direction: column; gap: 1.2rem;">
+        <!-- Dynamically filled -->
+      </div>
+    </div>
+    <div class="modal-footer" style="padding: 1.2rem 1.5rem; border-top: 1px solid rgba(255, 255, 255, 0.08); display: flex; justify-content: flex-end; background: rgba(0, 0, 0, 0.2); border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+      <button id="btn-acknowledge-assignments" style="padding: 0.7rem 1.8rem; background: linear-gradient(135deg, var(--accent), #4f46e5); border: none; color: white; font-weight: 700; border-radius: 8px; cursor: pointer; transition: all 0.2s; font-family: inherit; font-size: 0.9rem; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);">
+        Got it, thank you!
+      </button>
+    </div>
+  </dialog>
+
 
 
   <!-- DIALOG 9: ADMIN EDIT ACCOUNT PASSWORD -->

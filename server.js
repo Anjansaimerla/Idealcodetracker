@@ -604,6 +604,19 @@ app.post('/api/admin/assignments', async (req, res) => {
   }
 });
 
+app.delete('/api/admin/assignments/:id', async (req, res) => {
+  const { id } = req.params;
+  const { adminUser } = req.query;
+  try {
+    await db.deleteAssignment(id);
+    await logAdminAction(adminUser || 'admin', `Deleted assignment ID: ${id}`);
+    res.json({ message: 'Assignment deleted successfully' });
+  } catch (err) {
+    console.error('Delete assignment error:', err);
+    res.status(500).json({ error: `Internal server error: ${err.message}` });
+  }
+});
+
 // 5. Access Management
 app.get('/api/admin/accounts', async (req, res) => {
   try {

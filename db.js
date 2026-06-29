@@ -768,6 +768,18 @@ const db = {
     }
   },
 
+  deleteAssignment: async (id) => {
+    if (isFallbackMode) {
+      const data = readFallbackData();
+      data.assignments = data.assignments.filter(a => a.id !== parseInt(id));
+      writeFallbackData(data);
+      return true;
+    } else {
+      await pool.query('DELETE FROM assignments WHERE id = ?', [id]);
+      return true;
+    }
+  },
+
   addActivityLog: async (username, action) => {
     if (isFallbackMode) {
       const data = readFallbackData();
