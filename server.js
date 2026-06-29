@@ -1050,6 +1050,28 @@ async function runScheduledSync() {
   }
 }
 
+// Support external cron trigger endpoint to bypass Render Free Tier spin-downs
+app.post('/api/cron/sync', async (req, res) => {
+  const secretHeader = req.headers['x-cron-secret'] || req.query.secret;
+  const configuredSecret = process.env.CRON_SECRET || 'ideal_code_tracker_cron_secret';
+  
+  if (secretHeader !== configuredSecret) {
+    return res.status(401).json({ error: 'Unauthorized: Invalid cron secret key.' });
+  }
+
+  res.json({ message: 'Daily scraping schedule triggered successfully.', status: 'triggered' });
+
+  // Run in background asynchronously to prevent HTTP timeout
+  (async () => {
+    console.log('[Cron Trigger] Executing scheduled daily metrics sync...');
+    try {
+      await runScheduledSync();
+    } catch (e) {
+      console.error('[Cron Trigger] Daily sync error:', e);
+    }
+  })();
+});
+
 function startDailyScrapingScheduler() {
   const now = new Date();
   
