@@ -1077,12 +1077,12 @@ const db = {
       }
       if (existing.length > 0) {
         await pool.query(
-          'UPDATE student_internship_submissions SET item_ids = ?, submitted = 1, submitted_at = NOW() WHERE student_roll = ? AND title_id = ?',
+          'UPDATE student_internship_submissions SET item_ids = ?, submitted = TRUE, submitted_at = NOW() WHERE student_roll = ? AND title_id = ?',
           [itemIdsStr, studentRoll, titleId]
         );
       } else {
         await pool.query(
-          'INSERT INTO student_internship_submissions (student_roll, title_id, item_ids, submitted, submitted_at) VALUES (?, ?, ?, 1, NOW())',
+          'INSERT INTO student_internship_submissions (student_roll, title_id, item_ids, submitted, submitted_at) VALUES (?, ?, ?, TRUE, NOW())',
           [studentRoll, titleId, itemIdsStr]
         );
       }
