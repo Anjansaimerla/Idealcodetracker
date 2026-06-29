@@ -355,67 +355,7 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// API: User Forgot Password Recovery
-app.post('/api/auth/forgot-password', async (req, res) => {
-  const { username } = req.body;
-  if (!username) {
-    return res.status(400).json({ error: 'Username is required.' });
-  }
 
-  try {
-    const user = await db.getUser(username);
-    if (!user) {
-      // Return generic message for security (don't disclose username existence)
-      return res.json({ message: 'If the account exists, a password recovery email has been sent.' });
-    }
-
-    let email = null;
-    if (user.role === 'student') {
-      const students = await db.getAllStudents();
-      const student = students.find(s => s.roll.toUpperCase() === username.toUpperCase());
-      if (student) {
-        email = student.email;
-      }
-    } else {
-      // Route recovery email to registered work/recovery Gmail, fallback to username
-      email = user.email || user.username;
-    }
-
-    if (email) {
-      const hasConfig = process.env.RESEND_API_KEY || (process.env.SMTP_USER && process.env.SMTP_PASS);
-      if (hasConfig) {
-        try {
-          await sendEmailHelper({
-            to: email,
-            subject: 'Code Tracker Password Recovery',
-            text: `Hello ${user.name},\n\nYour account password is: ${user.password}\n\nRegards,\nCollege Code Tracker Team`,
-            html: `<div style="font-family: Arial, sans-serif; line-height: 1.5; color: #333;">
-                     <h2>Password Recovery</h2>
-                     <p>Hello <strong>${user.name}</strong>,</p>
-                     <p>You requested password recovery for your college Code Tracker account.</p>
-                     <div style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 15px; border-left: 4px solid #10b981; border-radius: 6px; margin: 15px 0; font-size: 1.1em;">
-                       Your account password is: <strong style="color: #4f46e5;">${user.password}</strong>
-                     </div>
-                     <p style="font-size: 0.85em; color: #6b7280; margin-top: 20px;">
-                       This is an automated notification. Please change your password if you suspect unauthorized access.
-                     </p>
-                   </div>`
-          });
-          console.log(`[Password Recovery] Sent email to ${email} for user ${username}`);
-        } catch (err) {
-          console.error(`[Password Recovery] Email send failed for ${email}:`, err.message);
-        }
-      } else {
-        console.log(`[Password Recovery Sim] Sent email to ${email} for user ${username}. Password is: ${user.password}`);
-      }
-    }
-
-    res.json({ message: 'If the account exists, a password recovery email has been sent.' });
-  } catch (err) {
-    console.error('Forgot password error:', err);
-    res.status(500).json({ error: 'Internal server error.' });
-  }
-});
 
 // API: User Change Password
 app.post('/api/auth/change-password', async (req, res) => {
@@ -907,70 +847,6 @@ app.post('/api/admin/refresh', async (req, res) => {
     console.error('Sync refresh error:', err);
     res.status(500).json({ error: 'Internal server error.' });
   }
-});
-
-// =================== OTP VERIFICATION ===================
-
-// In-memory OTP store: email -> { otp, expiresAt }
-const otpStore = new Map();
-
-function generateOTP() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
-
-// POST /api/auth/send-otp
-app.post('/api/auth/send-otp', async (req, res) => {
-  const { email } = req.body;
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return res.status(400).json({ error: 'A valid email address is required.' });
-  }
-  const otp = generateOTP();
-  const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
-  console.log(`[OTP DevLog] Generated OTP for ${email}: ${otp}`);
-  otpStore.set(email.toLowerCase(), { otp, expiresAt });
-  const hasConfig = process.env.RESEND_API_KEY || (process.env.SMTP_USER && process.env.SMTP_PASS);
-  if (hasConfig) {
-    try {
-      await sendEmailHelper({
-        to: email,
-        subject: 'Your OTP Verification Code — Ideal Code Tracker',
-        html: `<div style="font-family:Arial,sans-serif;line-height:1.6;color:#333;">
-          <h2 style="color:#6366f1;">Email Verification</h2>
-          <p>Your one-time password (OTP) for Ideal Code Tracker is:</p>
-          <div style="background:#f3f4f6;border-left:4px solid #6366f1;padding:15px 20px;border-radius:6px;margin:15px 0;font-size:2rem;font-weight:700;letter-spacing:8px;color:#4f46e5;">${otp}</div>
-          <p style="font-size:0.85em;color:#6b7280;">This OTP is valid for <strong>10 minutes</strong>. Do not share it with anyone.</p>
-        </div>`
-      });
-      console.log(`[OTP] Sent OTP to ${email}`);
-    } catch (err) {
-      console.error('[OTP] Email send failed:', err.message);
-      return res.status(500).json({ error: `Failed to send OTP email: ${err.message}` });
-    }
-  } else {
-    console.log(`[OTP Sim] OTP for ${email}: ${otp}`);
-  }
-  res.json({ message: 'OTP sent successfully. Please check your email.' });
-});
-
-// POST /api/auth/verify-otp
-app.post('/api/auth/verify-otp', (req, res) => {
-  const { email, otp } = req.body;
-  if (!email || !otp) {
-    return res.status(400).json({ error: 'Email and OTP are required.' });
-  }
-  const record = otpStore.get(email.toLowerCase());
-  if (!record) {
-    return res.status(400).json({ error: 'No OTP found for this email. Please request a new one.' });
-  }
-  if (Date.now() > record.expiresAt) {
-    otpStore.delete(email.toLowerCase());
-    return res.status(400).json({ error: 'OTP has expired. Please request a new one.' });
-  }
-  if (record.otp !== otp.trim()) {
-    return res.status(400).json({ error: 'Invalid OTP. Please try again.' });
-  }
-  otpStore.delete(email.toLowerCase());
-  res.json({ message: 'Email verified successfully.' });
 });
 
 // =================== INTERNSHIP APIs ===================

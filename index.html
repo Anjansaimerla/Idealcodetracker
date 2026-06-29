@@ -160,8 +160,6 @@
 
             <div class="auth-footer" id="login-footer-text">
               Students who don't have an account? <a href="#" class="auth-link" id="link-to-register">Sign Up</a>
-              <br><br>
-              <a href="#" class="auth-link" id="link-to-forgot-login">Forgot Password?</a>
             </div>
           </div>
 
@@ -197,24 +195,12 @@
               
               <div class="form-group">
                 <label for="reg-email">Gmail Address</label>
-                <div class="otp-verify-row">
-                  <div class="input-with-icon" style="flex:1;">
-                    <i class="fa-solid fa-envelope"></i>
-                    <input type="email" id="reg-email" required placeholder="name@gmail.com">
-                  </div>
-                  <button type="button" class="btn-otp-send" id="btn-send-otp">Send OTP</button>
+                <div class="input-with-icon">
+                  <i class="fa-solid fa-envelope"></i>
+                  <input type="email" id="reg-email" required placeholder="name@gmail.com">
                 </div>
-                <div class="otp-input-row" id="otp-input-row">
-                  <input type="text" id="otp-code" class="input-text" maxlength="6" placeholder="6-digit OTP" autocomplete="one-time-code" style="letter-spacing:6px;font-size:1.1rem;font-weight:700;text-align:center;">
-                  <button type="button" class="btn-otp-verify" id="btn-verify-otp">Verify</button>
-                </div>
-                <div class="otp-verified-badge" id="otp-verified-badge"><i class="fa-solid fa-circle-check"></i> Email Verified</div>
-                <div class="otp-timer" id="otp-timer" style="display:none;"></div>
                 <div class="error-msg" id="reg-email-error">
                   <span>❌</span> Please enter a valid Gmail address (must end with @gmail.com).
-                </div>
-                <div class="error-msg" id="reg-otp-error" style="display:none;">
-                  <span>❌</span> Please verify your Gmail address via OTP before continuing.
                 </div>
               </div>
 
@@ -264,8 +250,6 @@
 
             <div class="auth-footer">
               Already registered? <a href="#" class="auth-link" id="link-to-login-1">Sign In</a>
-              <br><br>
-              <a href="#" class="auth-link" id="link-to-forgot-reg">Forgot Password?</a>
             </div>
           </div>
 
@@ -353,32 +337,7 @@
             </form>
           </div>
 
-          <!-- FORGOT PASSWORD -->
-          <div class="auth-section" id="section-forgot" style="display: none;">
-            <div class="auth-header">
-              <h2>Recover Password</h2>
-              <p>Enter your username to retrieve your password via email</p>
-            </div>
-            
-            <form id="form-forgot" novalidate>
-              <div class="form-group">
-                <label for="forgot-username">Username / Roll Number / Gmail</label>
-                <div class="input-with-icon">
-                  <i class="fa-solid fa-user"></i>
-                  <input type="text" id="forgot-username" required placeholder="e.g. 236K1A0546 or admin@college.edu">
-                </div>
-                <div class="error-msg" id="forgot-username-error">
-                  <span>❌</span> Username is required.
-                </div>
-              </div>
-              
-              <button type="submit" class="btn-primary">Recover Password</button>
-            </form>
 
-            <div class="auth-footer">
-              Remembered your password? <a href="#" class="auth-link" id="link-to-login-forgot">Sign In</a>
-            </div>
-          </div>
 
         </div>
       </div>

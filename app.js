@@ -339,7 +339,6 @@ function setupEventListeners() {
   }
 
   // ── V2: Hook up new event listeners ──
-  setupOTPEventListeners();
   setupICEventListeners();
   setupStudentInternshipEventListeners();
   setupAdminInternshipEventListeners();
@@ -709,15 +708,7 @@ function handleRegisterStep1(e) {
     showInputError('reg-email');
     isValid = false;
   }
-  // OTP verification check
-  if (!otpEmailVerified) {
-    const otpErr = document.getElementById('reg-otp-error');
-    if (otpErr) otpErr.style.display = 'block';
-    isValid = false;
-  } else {
-    const otpErr = document.getElementById('reg-otp-error');
-    if (otpErr) otpErr.style.display = 'none';
-  }
+  // OTP check removed as per client request
   if (!branchVal) {
     showInputError('reg-branch');
     isValid = false;
@@ -3128,146 +3119,6 @@ async function handleAdminEditPasswordSubmit(e) {
 
 // Execute on script load
 window.addEventListener('DOMContentLoaded', initApp);
-
-// ============================================================
-// V2: OTP VERIFICATION SYSTEM
-// ============================================================
-
-function setupOTPEventListeners() {
-  const btnSendOTP = document.getElementById('btn-send-otp');
-  const btnVerifyOTP = document.getElementById('btn-verify-otp');
-
-  if (btnSendOTP) {
-    btnSendOTP.addEventListener('click', handleSendOTP);
-  }
-  if (btnVerifyOTP) {
-    btnVerifyOTP.addEventListener('click', handleVerifyOTP);
-  }
-
-  // Reset OTP state whenever the email input changes
-  const regEmailInput = document.getElementById('reg-email');
-  if (regEmailInput) {
-    regEmailInput.addEventListener('input', () => {
-      if (otpEmailVerified) {
-        otpEmailVerified = false;
-        const badge = document.getElementById('otp-verified-badge');
-        if (badge) badge.classList.remove('visible');
-        const otpRow = document.getElementById('otp-input-row');
-        if (otpRow) otpRow.classList.remove('visible');
-      }
-    });
-  }
-}
-
-async function handleSendOTP() {
-  const emailVal = document.getElementById('reg-email').value.trim();
-  if (!emailVal || !/^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(emailVal.toLowerCase())) {
-    const errEl = document.getElementById('reg-email-error');
-    if (errEl) errEl.style.display = 'block';
-    return;
-  }
-
-  const btn = document.getElementById('btn-send-otp');
-  btn.disabled = true;
-  btn.textContent = 'Sending...';
-
-  try {
-    const res = await fetch('/api/auth/send-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: emailVal })
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      alert(data.error || 'Failed to send OTP.');
-      btn.disabled = false;
-      btn.textContent = 'Send OTP';
-      return;
-    }
-
-    // Show OTP input row
-    const otpRow = document.getElementById('otp-input-row');
-    if (otpRow) otpRow.classList.add('visible');
-
-    // Start countdown timer
-    startOTPTimer(btn);
-  } catch (err) {
-    console.error('OTP send error:', err);
-    alert('Failed to send OTP. Please try again.');
-    btn.disabled = false;
-    btn.textContent = 'Send OTP';
-  }
-}
-
-function startOTPTimer(btn) {
-  if (otpTimerInterval) clearInterval(otpTimerInterval);
-  let secondsLeft = 60;
-  const timerEl = document.getElementById('otp-timer');
-  if (timerEl) {
-    timerEl.style.display = 'block';
-    timerEl.textContent = `Resend OTP in ${secondsLeft}s`;
-  }
-  btn.textContent = `Resend (${secondsLeft}s)`;
-
-  otpTimerInterval = setInterval(() => {
-    secondsLeft--;
-    if (timerEl) timerEl.textContent = `Resend OTP in ${secondsLeft}s`;
-    btn.textContent = `Resend (${secondsLeft}s)`;
-
-    if (secondsLeft <= 0) {
-      clearInterval(otpTimerInterval);
-      btn.disabled = false;
-      btn.textContent = 'Resend OTP';
-      if (timerEl) timerEl.style.display = 'none';
-    }
-  }, 1000);
-}
-
-async function handleVerifyOTP() {
-  const emailVal = document.getElementById('reg-email').value.trim();
-  const otpVal = document.getElementById('otp-code').value.trim();
-
-  if (!otpVal || otpVal.length !== 6) {
-    alert('Please enter the 6-digit OTP code.');
-    return;
-  }
-
-  const btn = document.getElementById('btn-verify-otp');
-  btn.disabled = true;
-  btn.textContent = 'Verifying...';
-
-  try {
-    const res = await fetch('/api/auth/verify-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: emailVal, otp: otpVal })
-    });
-    const data = await res.json();
-
-    if (!res.ok) {
-      alert(data.error || 'Invalid OTP. Please try again.');
-      btn.disabled = false;
-      btn.textContent = 'Verify';
-      return;
-    }
-
-    otpEmailVerified = true;
-    const badge = document.getElementById('otp-verified-badge');
-    if (badge) badge.classList.add('visible');
-    const otpRow = document.getElementById('otp-input-row');
-    if (otpRow) otpRow.classList.remove('visible');
-    const otpErrEl = document.getElementById('reg-otp-error');
-    if (otpErrEl) otpErrEl.style.display = 'none';
-    if (otpTimerInterval) clearInterval(otpTimerInterval);
-    const timerEl = document.getElementById('otp-timer');
-    if (timerEl) timerEl.style.display = 'none';
-  } catch (err) {
-    console.error('OTP verify error:', err);
-    alert('Failed to verify OTP. Please try again.');
-    btn.disabled = false;
-    btn.textContent = 'Verify';
-  }
-}
 
 // ============================================================
 // V2: INTERNSHIP COORDINATOR (IC) PORTAL
