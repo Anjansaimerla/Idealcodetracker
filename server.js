@@ -5,7 +5,7 @@ const dns = require('dns');
 const { initDb, db } = require('./db');
 const nodemailer = require('nodemailer');
 
-// Setup SMTP Transporter for real email delivery
+// Setup SMTP Transporter for real email delivery (with 10s connection timeouts)
 const smtpTransporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
   port: parseInt(process.env.SMTP_PORT || '587'),
@@ -16,8 +16,52 @@ const smtpTransporter = nodemailer.createTransport({
   },
   tls: {
     rejectUnauthorized: false
-  }
+  },
+  connectionTimeout: 10000,
+  socketTimeout: 10000
 });
+
+// Unified email sending helper (supports Resend HTTP API and SMTP)
+async function sendEmailHelper({ to, subject, text, html }) {
+  if (process.env.RESEND_API_KEY) {
+    console.log(`[Email] Sending via Resend API to ${to}...`);
+    const fromEmail = process.env.SMTP_USER || 'onboarding@resend.dev';
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`
+      },
+      body: JSON.stringify({
+        from: `Ideal Code Tracker <${fromEmail}>`,
+        to: to,
+        subject: subject,
+        text: text || '',
+        html: html
+      })
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Resend API Error: ${errText}`);
+    }
+    return await res.json();
+  }
+
+  const hasSmtpConfig = process.env.SMTP_USER && process.env.SMTP_PASS;
+  if (hasSmtpConfig) {
+    console.log(`[Email] Sending via SMTP to ${to}...`);
+    return await smtpTransporter.sendMail({
+      from: `"Ideal Code Tracker" <${process.env.SMTP_USER}>`,
+      to: to,
+      subject: subject,
+      text: text || '',
+      html: html
+    });
+  }
+
+  console.log(`[Email Sim] To: ${to} | Subject: ${subject}`);
+  return { simulated: true };
+}
 
 // Force IPv4 DNS resolution first to avoid macOS/localhost loopback/IPv6 timeout hangs
 dns.setDefaultResultOrder('ipv4first');
@@ -338,26 +382,29 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     }
 
     if (email) {
-      const hasSmtpConfig = process.env.SMTP_USER && process.env.SMTP_PASS;
-      if (hasSmtpConfig) {
-        await smtpTransporter.sendMail({
-          from: `"Ideal Code Tracker" <${process.env.SMTP_USER}>`,
-          to: email,
-          subject: 'Code Tracker Password Recovery',
-          text: `Hello ${user.name},\n\nYour account password is: ${user.password}\n\nRegards,\nCollege Code Tracker Team`,
-          html: `<div style="font-family: Arial, sans-serif; line-height: 1.5; color: #333;">
-                   <h2>Password Recovery</h2>
-                   <p>Hello <strong>${user.name}</strong>,</p>
-                   <p>You requested password recovery for your college Code Tracker account.</p>
-                   <div style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 15px; border-left: 4px solid #10b981; border-radius: 6px; margin: 15px 0; font-size: 1.1em;">
-                     Your account password is: <strong style="color: #4f46e5;">${user.password}</strong>
-                   </div>
-                   <p style="font-size: 0.85em; color: #6b7280; margin-top: 20px;">
-                     This is an automated notification. Please change your password if you suspect unauthorized access.
-                   </p>
-                 </div>`
-        });
-        console.log(`[Password Recovery] Sent email to ${email} for user ${username}`);
+      const hasConfig = process.env.RESEND_API_KEY || (process.env.SMTP_USER && process.env.SMTP_PASS);
+      if (hasConfig) {
+        try {
+          await sendEmailHelper({
+            to: email,
+            subject: 'Code Tracker Password Recovery',
+            text: `Hello ${user.name},\n\nYour account password is: ${user.password}\n\nRegards,\nCollege Code Tracker Team`,
+            html: `<div style="font-family: Arial, sans-serif; line-height: 1.5; color: #333;">
+                     <h2>Password Recovery</h2>
+                     <p>Hello <strong>${user.name}</strong>,</p>
+                     <p>You requested password recovery for your college Code Tracker account.</p>
+                     <div style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 15px; border-left: 4px solid #10b981; border-radius: 6px; margin: 15px 0; font-size: 1.1em;">
+                       Your account password is: <strong style="color: #4f46e5;">${user.password}</strong>
+                     </div>
+                     <p style="font-size: 0.85em; color: #6b7280; margin-top: 20px;">
+                       This is an automated notification. Please change your password if you suspect unauthorized access.
+                     </p>
+                   </div>`
+          });
+          console.log(`[Password Recovery] Sent email to ${email} for user ${username}`);
+        } catch (err) {
+          console.error(`[Password Recovery] Email send failed for ${email}:`, err.message);
+        }
       } else {
         console.log(`[Password Recovery Sim] Sent email to ${email} for user ${username}. Password is: ${user.password}`);
       }
@@ -729,14 +776,13 @@ app.post('/api/admin/notify', async (req, res) => {
       return true;
     });
 
-    const hasSmtpConfig = process.env.SMTP_USER && process.env.SMTP_PASS;
+    const hasConfig = process.env.RESEND_API_KEY || (process.env.SMTP_USER && process.env.SMTP_PASS);
 
-    if (hasSmtpConfig) {
+    if (hasConfig) {
       console.log(`[Email Notification] sending "${subject}" to ${targetStudents.length} recipients...`);
       const emailPromises = targetStudents.map(student => {
         if (!student.email) return Promise.resolve();
-        return smtpTransporter.sendMail({
-          from: `"Ideal Code Tracker" <${process.env.SMTP_USER}>`,
+        return sendEmailHelper({
           to: student.email,
           subject: subject,
           text: body,
@@ -757,16 +803,16 @@ app.post('/api/admin/notify', async (req, res) => {
 
       await Promise.all(emailPromises);
       await logAdminAction(adminUser, `Dispatched broadcast email: "${subject}" to ${targetStudents.length} recipients.`);
-      res.json({ message: `Broadcast successfully sent to ${targetStudents.length} students via SMTP.` });
+      res.json({ message: `Broadcast successfully sent to ${targetStudents.length} students.` });
     } else {
-      console.log(`[Email Notification Sim] sending "${subject}" to ${targetStudents.length} recipients (SMTP not configured)...`);
+      console.log(`[Email Notification Sim] sending "${subject}" to ${targetStudents.length} recipients (not configured)...`);
       targetStudents.forEach(student => {
         if (student.email) {
           console.log(`- Simulated email to ${student.name} <${student.email}>`);
         }
       });
       await logAdminAction(adminUser, `Dispatched simulated email notification: "${subject}" to ${targetStudents.length} target users.`);
-      res.json({ message: `Broadcast successfully simulated for ${targetStudents.length} students. (Configure SMTP settings in .env to send real emails)` });
+      res.json({ message: `Broadcast successfully simulated for ${targetStudents.length} students.` });
     }
   } catch (err) {
     console.error('Broadcast notify error:', err);
@@ -882,11 +928,10 @@ app.post('/api/auth/send-otp', async (req, res) => {
   const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
   console.log(`[OTP DevLog] Generated OTP for ${email}: ${otp}`);
   otpStore.set(email.toLowerCase(), { otp, expiresAt });
-  const hasSmtpConfig = process.env.SMTP_USER && process.env.SMTP_PASS;
-  if (hasSmtpConfig) {
+  const hasConfig = process.env.RESEND_API_KEY || (process.env.SMTP_USER && process.env.SMTP_PASS);
+  if (hasConfig) {
     try {
-      await smtpTransporter.sendMail({
-        from: `"Ideal Code Tracker" <${process.env.SMTP_USER}>`,
+      await sendEmailHelper({
         to: email,
         subject: 'Your OTP Verification Code — Ideal Code Tracker',
         html: `<div style="font-family:Arial,sans-serif;line-height:1.6;color:#333;">
@@ -899,7 +944,7 @@ app.post('/api/auth/send-otp', async (req, res) => {
       console.log(`[OTP] Sent OTP to ${email}`);
     } catch (err) {
       console.error('[OTP] Email send failed:', err.message);
-      return res.status(500).json({ error: 'Failed to send OTP email. Please try again.' });
+      return res.status(500).json({ error: `Failed to send OTP email: ${err.message}` });
     }
   } else {
     console.log(`[OTP Sim] OTP for ${email}: ${otp}`);
