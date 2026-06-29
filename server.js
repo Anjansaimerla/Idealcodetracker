@@ -25,7 +25,7 @@ const smtpTransporter = nodemailer.createTransport({
 async function sendEmailHelper({ to, subject, text, html }) {
   if (process.env.RESEND_API_KEY) {
     console.log(`[Email] Sending via Resend API to ${to}...`);
-    const fromEmail = process.env.SMTP_USER || 'onboarding@resend.dev';
+    const fromEmail = process.env.RESEND_FROM || 'onboarding@resend.dev';
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
