@@ -225,22 +225,7 @@ function setupEventListeners() {
     document.getElementById('dialog-student-detail').close();
   });
 
-  // Forgot Password transitions
-  document.getElementById('link-to-forgot-login').addEventListener('click', (e) => {
-    e.preventDefault();
-    showAuthSection('section-forgot');
-  });
-  document.getElementById('link-to-forgot-reg').addEventListener('click', (e) => {
-    e.preventDefault();
-    showAuthSection('section-forgot');
-  });
-  document.getElementById('link-to-login-forgot').addEventListener('click', (e) => {
-    e.preventDefault();
-    showAuthSection('section-login');
-  });
-
-  // Forgot Password Submit
-  document.getElementById('form-forgot').addEventListener('submit', handleForgotPassword);
+  // Forgot Password handlers removed
 
 
 
@@ -355,7 +340,7 @@ function setupEventListeners() {
 
 // Helper to switch visual auth sections (Login, Register1, Register2)
 function showAuthSection(sectionId) {
-  const sections = ['section-login', 'section-register-1', 'section-register-2', 'section-forgot'];
+  const sections = ['section-login', 'section-register-1', 'section-register-2'];
   sections.forEach(id => {
     document.getElementById(id).style.display = id === sectionId ? 'block' : 'none';
   });
@@ -479,31 +464,7 @@ async function handleLogin(e) {
   }
 }
 
-// Handle Forgot Password Form Submit
-async function handleForgotPassword(e) {
-  e.preventDefault();
-  resetFormErrors(e.target);
 
-  const usernameVal = document.getElementById('forgot-username').value.trim();
-  if (!usernameVal) {
-    showInputError('forgot-username');
-    return;
-  }
-
-  try {
-    const res = await fetch('/api/auth/forgot-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: usernameVal })
-    });
-    const data = await res.json();
-    alert(data.message || 'If the account exists, a password recovery email has been sent.');
-    showAuthSection('section-login');
-  } catch (err) {
-    console.error('Forgot password error:', err);
-    alert('Failed to send recovery email. Please try again.');
-  }
-}
 
 // Handle Change Password Submit
 async function handleChangePasswordSubmit(e) {
