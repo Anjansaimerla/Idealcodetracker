@@ -435,7 +435,7 @@ app.post('/api/auth/register', async (req, res) => {
     if (err.message.includes('registered')) {
       return res.status(409).json({ error: err.message });
     }
-    res.status(500).json({ error: 'Internal server error.' });
+    res.status(500).json({ error: `Internal server error: ${err.message}` });
   }
 });
 
@@ -949,7 +949,7 @@ app.get('/api/internships/student/:roll', async (req, res) => {
     res.json({ submissions });
   } catch (err) {
     console.error('Get student submissions error:', err);
-    res.status(500).json({ error: 'Internal server error.' });
+    res.status(500).json({ error: `Internal server error: ${err.message}` });
   }
 });
 
@@ -968,7 +968,7 @@ app.post('/api/internships/submit', async (req, res) => {
     if (err.message.includes('Already submitted')) {
       return res.status(409).json({ error: err.message });
     }
-    res.status(500).json({ error: 'Internal server error.' });
+    res.status(500).json({ error: `Internal server error: ${err.message}` });
   }
 });
 
