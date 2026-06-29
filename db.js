@@ -557,7 +557,7 @@ const db = {
         }
 
         await connection.query(
-          'INSERT INTO users (username, password, role, name, branch) VALUES (?, ?, "student", ?, ?)',
+          "INSERT INTO users (username, password, role, name, branch) VALUES (?, ?, 'student', ?, ?)",
           [user.username, user.password, user.name, user.branch]
         );
         await connection.query(
@@ -660,7 +660,7 @@ const db = {
       }
       throw new Error('Student account not found.');
     } else {
-      const [result] = await pool.query('DELETE FROM users WHERE username = ? AND role = "student"', [roll]);
+      const [result] = await pool.query("DELETE FROM users WHERE username = ? AND role = 'student'", [roll]);
       if (result.affectedRows === 0) {
         throw new Error('Student account not found.');
       }
