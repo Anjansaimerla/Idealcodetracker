@@ -12,6 +12,7 @@
   ],
   "routes": [
     { "src": "/api/cron-trigger", "dest": "api/cron-trigger.js" },
+    { "src": "/api/(.*)", "dest": "https://ideal-code-tracker-backend.onrender.com/api/$1" },
     { "src": "/", "dest": "/index.html" },
     { "src": "/(.*)", "dest": "/$1" }
   ],
