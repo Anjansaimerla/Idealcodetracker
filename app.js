@@ -364,6 +364,10 @@ function showAuthSection(sectionId) {
 
 // Helper to switch global views
 function switchView(viewId) {
+  if (viewId !== 'view-auth' && !currentUser) {
+    viewId = 'view-auth';
+  }
+
   const views = ['view-auth', 'view-dashboard', 'view-student-profile', 'view-admin', 'view-ic', 'view-student-internships'];
   views.forEach(id => {
     const el = document.getElementById(id);
@@ -984,6 +988,10 @@ async function finalizeRegistration(lcUrl, hrUrl, cfUrl, gfgUrl, ccUrl, ghUrl) {
 
 // Switch between dashboard widgets (Individual, Team, Compare)
 function switchWidgetPanel(panelId, buttonEl) {
+  if (!currentUser) {
+    switchView('view-auth');
+    return;
+  }
   activeWidgetPanel = panelId;
   switchView('view-dashboard');
 

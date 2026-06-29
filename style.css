@@ -1513,6 +1513,11 @@ dialog::backdrop {
     row-gap: 0.5rem !important;
   }
 
+  .nav-container[style*="display: none"],
+  .nav-container[style*="display:none"] {
+    display: none !important;
+  }
+
   .logo {
     grid-column: 1 !important;
     grid-row: 1 !important;
