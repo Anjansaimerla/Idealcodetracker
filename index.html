@@ -75,9 +75,6 @@
         <button class="floating-widget-btn" id="btn-admin-audit" data-panel="admin-panel-audit">
           <i class="fa-solid fa-file-shield"></i> Audit Log
         </button>
-        <button class="floating-widget-btn" id="btn-admin-notify" data-panel="admin-panel-notify">
-          <i class="fa-solid fa-paper-plane"></i> Notify
-        </button>
         <button class="floating-widget-btn" id="btn-admin-notices" data-panel="admin-panel-notices">
           <i class="fa-solid fa-bullhorn"></i> Notices
         </button>
@@ -903,86 +900,7 @@
           </div>
         </div>
 
-        <!-- 6. ADMIN NOTIFY -->
-        <div class="admin-panel" id="admin-panel-notify" style="display: none;">
-          <div class="panel-header">
-            <h2><i class="fa-solid fa-paper-plane"></i> Dispatch Email Broadcast Notifications</h2>
-          </div>
-          <form id="form-admin-notify" class="glass-panel" style="margin-top: 1rem; padding: 2rem;" novalidate>
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-bottom: 1.5rem;">
-              <div class="form-group">
-                <label>Send Via</label>
-                <div style="display: flex; gap: 1rem; align-items: center; margin-top: 0.5rem;">
-                  <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 500;">
-                    <input type="checkbox" id="notify-via-email" checked disabled> Email / Gmail Service
-                  </label>
-                </div>
-              </div>
 
-              <div class="form-group">
-                <label>Recipients Type</label>
-                <div style="display: flex; gap: 1.5rem; align-items: center; margin-top: 0.5rem;">
-                  <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 500;">
-                    <input type="radio" name="notify-recipients" value="all" checked> All Users
-                  </label>
-                  <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 500;">
-                    <input type="radio" name="notify-recipients" value="specific"> Filtered Group
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <!-- Filter Panel -->
-            <div id="notify-filters-section" style="display: none; border-top: 1px solid var(--border-color); padding-top: 1.5rem; margin-bottom: 1.5rem; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
-              <div class="form-group">
-                <label for="notify-batch-filter">Target Graduation Batch</label>
-                <select id="notify-batch-filter" class="filter-select" style="width: 100%;">
-                  <option value="ALL">All Batches</option>
-                  <option value="2026">2026</option>
-                  <option value="2027">2027</option>
-                  <option value="2028">2028</option>
-                  <option value="2029">2029</option>
-                  <option value="2030">2030</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label for="notify-branch-filter">Target Branch</label>
-                <select id="notify-branch-filter" class="filter-select" style="width: 100%;">
-                  <option value="ALL">All Branches</option>
-                  <option value="CSE">CSE</option>
-                  <option value="CSM">CSM</option>
-                  <option value="AIML">AIML</option>
-                  <option value="MECH">MECH</option>
-                  <option value="ECE">ECE</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label for="notify-platform-filter">Linked Coding Accounts filter</label>
-                <select id="notify-platform-filter" class="filter-select" style="width: 100%;">
-                  <option value="ALL">All Accounts</option>
-                  <option value="leetcode">LeetCode accounts only</option>
-                  <option value="hackerrank">HackerRank accounts only</option>
-                  <option value="codeforces">Codeforces accounts only</option>
-                  <option value="gfg">GFG accounts only</option>
-                  <option value="codechef">CodeChef accounts only</option>
-                  <option value="github">GitHub accounts only</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="form-group" style="margin-bottom: 1.5rem;">
-              <label for="notify-subject">Email Subject Title</label>
-              <input type="text" id="notify-subject" required placeholder="Enter broadcast mail subject header..." class="input-text">
-            </div>
-
-            <div class="form-group" style="margin-bottom: 1.5rem;">
-              <label for="notify-body">Message Body Contents</label>
-              <textarea id="notify-body" required rows="6" placeholder="Compose notification content body for the students..." style="width: 100%; padding: 0.8rem; border-radius: var(--radius-sm); background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); color: var(--text-primary); font-family: inherit; font-size: 0.95rem; resize: vertical; outline: none;"></textarea>
-            </div>
-
-            <button type="submit" class="btn-primary"><i class="fa-solid fa-paper-plane"></i> Dispatch Email Broadcast</button>
-          </form>
-        </div>
 
         <!-- 7. ADMIN NOTICES -->
         <div class="admin-panel" id="admin-panel-notices" style="display: none;">

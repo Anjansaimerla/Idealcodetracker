@@ -1510,8 +1510,6 @@ function switchAdminPanel(panelId, btnEl) {
     renderAdminActivityTimeline();
   } else if (panelId === 'admin-panel-audit') {
     renderAdminAuditLogs();
-  } else if (panelId === 'admin-panel-notify') {
-    setupAdminNotifyForm();
   } else if (panelId === 'admin-panel-notices') {
     renderAdminNotices();
   } else if (panelId === 'admin-panel-refresh') {
@@ -2037,58 +2035,7 @@ async function renderAdminAuditLogs() {
   }
 }
 
-// 6. NOTIFY BROADCASTER FORM
-function setupAdminNotifyForm() {
-  const specificRadio = document.querySelector('input[name="notify-recipients"][value="specific"]');
-  const allRadio = document.querySelector('input[name="notify-recipients"][value="all"]');
-  const filtersSec = document.getElementById('notify-filters-section');
 
-  const toggleFilters = () => {
-    filtersSec.style.display = specificRadio.checked ? 'grid' : 'none';
-  };
-
-  specificRadio.addEventListener('change', toggleFilters);
-  allRadio.addEventListener('change', toggleFilters);
-  toggleFilters();
-}
-
-async function handleAdminNotifySubmit(e) {
-  e.preventDefault();
-  const subject = document.getElementById('notify-subject').value.trim();
-  const body = document.getElementById('notify-body').value.trim();
-  const recipientsType = document.querySelector('input[name="notify-recipients"]:checked').value;
-  
-  const batchFilter = document.getElementById('notify-batch-filter').value;
-  const branchFilter = document.getElementById('notify-branch-filter').value;
-  const platformFilter = document.getElementById('notify-platform-filter').value;
-
-  if (!subject || !body) {
-    alert('Please fill out all required broadcast subject and body fields.');
-    return;
-  }
-
-  try {
-    const res = await fetch('/api/admin/notify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        recipientsType,
-        batchFilter,
-        yearFilter: branchFilter,
-        platformFilter,
-        subject,
-        body,
-        adminUser: currentUser.username
-      })
-    });
-    const data = await res.json();
-    alert(data.message || 'Notification broadcast completed.');
-    e.target.reset();
-  } catch (err) {
-    console.error(err);
-    alert('Notification transmission failed.');
-  }
-}
 
 // 7. NOTICES board
 async function renderAdminNotices() {
@@ -2639,7 +2586,6 @@ function setupAdminEventListeners() {
   });
 
   // Forms submissions
-  document.getElementById('form-admin-notify').addEventListener('submit', handleAdminNotifySubmit);
   document.getElementById('form-admin-notice').addEventListener('submit', handleAdminNoticeSubmit);
   document.getElementById('form-admin-access').addEventListener('submit', handleAdminAccessSubmit);
   document.getElementById('form-admin-assignment').addEventListener('submit', handleAdminAssignmentSubmit);
