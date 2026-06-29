@@ -1180,19 +1180,35 @@
               <div class="no-internships-msg">Loading...</div>
             </div>
             <h3 style="margin-bottom:1rem;border-top:1px solid var(--border-color);padding-top:1.5rem;"><i class="fa-solid fa-table" style="color:var(--primary);"></i> All Student Submissions</h3>
-            <div class="ic-overview-controls">
-              <select class="filter-select" id="admin-intern-filter-branch">
-                <option value="ALL">All Branches</option>
-                <option value="CSE">CSE</option><option value="CSM">CSM</option>
-                <option value="AIML">AIML</option><option value="MECH">MECH</option>
-                <option value="ECE">ECE</option>
-              </select>
-              <select class="filter-select" id="admin-intern-filter-batch">
-                <option value="ALL">All Batches</option>
-                <option value="2026">2026</option><option value="2027">2027</option>
-                <option value="2028">2028</option><option value="2029">2029</option>
-                <option value="2030">2030</option>
-              </select>
+            <div class="ic-overview-controls" style="display:flex;gap:1rem;align-items:center;position:relative;z-index:20;">
+              <div class="custom-multiselect" id="admin-intern-branch-container">
+                <div class="multiselect-select-box" onclick="toggleMultiselect('admin-intern-branch-options', event)">
+                  <span id="admin-intern-branch-label">All Branches</span>
+                  <i class="fa-solid fa-chevron-down" style="font-size:0.75rem;"></i>
+                </div>
+                <div class="multiselect-options" id="admin-intern-branch-options">
+                  <label><input type="checkbox" value="ALL" checked onchange="handleMultiselectAll(this, 'admin-intern-branch-options', 'admin-intern-branch-label', 'Branches'); renderAdminInternshipSubmissions();"> All Branches</label>
+                  <label><input type="checkbox" value="CSE" onchange="handleMultiselectChange('admin-intern-branch-options', 'admin-intern-branch-label', 'Branches'); renderAdminInternshipSubmissions();"> CSE</label>
+                  <label><input type="checkbox" value="CSM" onchange="handleMultiselectChange('admin-intern-branch-options', 'admin-intern-branch-label', 'Branches'); renderAdminInternshipSubmissions();"> CSM</label>
+                  <label><input type="checkbox" value="AIML" onchange="handleMultiselectChange('admin-intern-branch-options', 'admin-intern-branch-label', 'Branches'); renderAdminInternshipSubmissions();"> AIML</label>
+                  <label><input type="checkbox" value="MECH" onchange="handleMultiselectChange('admin-intern-branch-options', 'admin-intern-branch-label', 'Branches'); renderAdminInternshipSubmissions();"> MECH</label>
+                  <label><input type="checkbox" value="ECE" onchange="handleMultiselectChange('admin-intern-branch-options', 'admin-intern-branch-label', 'Branches'); renderAdminInternshipSubmissions();"> ECE</label>
+                </div>
+              </div>
+              <div class="custom-multiselect" id="admin-intern-batch-container">
+                <div class="multiselect-select-box" onclick="toggleMultiselect('admin-intern-batch-options', event)">
+                  <span id="admin-intern-batch-label">All Batches</span>
+                  <i class="fa-solid fa-chevron-down" style="font-size:0.75rem;"></i>
+                </div>
+                <div class="multiselect-options" id="admin-intern-batch-options">
+                  <label><input type="checkbox" value="ALL" checked onchange="handleMultiselectAll(this, 'admin-intern-batch-options', 'admin-intern-batch-label', 'Batches'); renderAdminInternshipSubmissions();"> All Batches</label>
+                  <label><input type="checkbox" value="2026" onchange="handleMultiselectChange('admin-intern-batch-options', 'admin-intern-batch-label', 'Batches'); renderAdminInternshipSubmissions();"> 2026</label>
+                  <label><input type="checkbox" value="2027" onchange="handleMultiselectChange('admin-intern-batch-options', 'admin-intern-batch-label', 'Batches'); renderAdminInternshipSubmissions();"> 2027</label>
+                  <label><input type="checkbox" value="2028" onchange="handleMultiselectChange('admin-intern-batch-options', 'admin-intern-batch-label', 'Batches'); renderAdminInternshipSubmissions();"> 2028</label>
+                  <label><input type="checkbox" value="2029" onchange="handleMultiselectChange('admin-intern-batch-options', 'admin-intern-batch-label', 'Batches'); renderAdminInternshipSubmissions();"> 2029</label>
+                  <label><input type="checkbox" value="2030" onchange="handleMultiselectChange('admin-intern-batch-options', 'admin-intern-batch-label', 'Batches'); renderAdminInternshipSubmissions();"> 2030</label>
+                </div>
+              </div>
               <input type="text" id="admin-intern-search" class="input-text" placeholder="Search student..." style="min-width:180px;">
             </div>
             <div class="table-container" style="box-shadow:none;border:none;padding:0;">

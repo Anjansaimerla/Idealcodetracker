@@ -1649,7 +1649,8 @@ function renderAdminUsers() {
   tbody.innerHTML = '';
 
   if (filtered.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="12" style="text-align: center; color: var(--text-muted); padding: 2rem;">No students found matching filters.</td></tr>`;
+    const colSpan = 12 + (internshipTitlesDb.length || 1);
+    tbody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align: center; color: var(--text-muted); padding: 2rem;">No students found matching filters.</td></tr>`;
     return;
   }
 
@@ -1667,6 +1668,7 @@ function renderAdminUsers() {
       <td>${s.stats.gfg || 0}</td>
       <td>${s.stats.codechef || 0}</td>
       <td>${s.stats.github || 0}</td>
+      ${buildInternshipCells(s.roll)}
       <td style="white-space: nowrap;">
         <button class="btn-action-small btn-see" title="View details"><i class="fa-solid fa-eye"></i></button>
         <button class="btn-action-small btn-edit" title="Edit student info"><i class="fa-solid fa-pen"></i></button>
@@ -3584,10 +3586,8 @@ function renderStudentInternshipTitles() {
 // ============================================================
 
 function setupAdminInternshipEventListeners() {
-  ['admin-intern-filter-branch', 'admin-intern-filter-batch', 'admin-intern-search'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener('input', renderAdminInternshipSubmissions);
-  });
+  const el = document.getElementById('admin-intern-search');
+  if (el) el.addEventListener('input', renderAdminInternshipSubmissions);
 }
 
 async function loadAdminInternships() {
@@ -3628,8 +3628,8 @@ function renderAdminInternshipSubmissions() {
   if (!tbody) return;
 
   const { submissions = [], titles = [], students = [] } = icOverviewData;
-  const branchF = document.getElementById('admin-intern-filter-branch')?.value || 'ALL';
-  const batchF = document.getElementById('admin-intern-filter-batch')?.value || 'ALL';
+  const branchF = getMultiselectValues('admin-intern-branch-options');
+  const batchF = getMultiselectValues('admin-intern-batch-options');
   const search = (document.getElementById('admin-intern-search')?.value || '').toLowerCase().trim();
 
   const titleMap = Object.fromEntries(titles.map(t => [t.id, t]));
@@ -3644,10 +3644,16 @@ function renderAdminInternshipSubmissions() {
     return { sub, student, title, submittedItems };
   });
 
-  if (branchF !== 'ALL') rows = rows.filter(r => r.student.branch === branchF);
-  if (batchF !== 'ALL') rows = rows.filter(r =>
-    String(r.student.batchYear) === batchF || String(r.student.batch_year) === batchF
-  );
+  if (branchF !== 'ALL') {
+    const branches = branchF.split(',');
+    rows = rows.filter(r => branches.includes(r.student.branch));
+  }
+  if (batchF !== 'ALL') {
+    const batches = batchF.split(',');
+    rows = rows.filter(r =>
+      batches.includes(String(r.student.batchYear)) || batches.includes(String(r.student.batch_year))
+    );
+  }
   if (search) rows = rows.filter(r =>
     (r.student.roll || r.sub.student_roll).toLowerCase().includes(search) ||
     (r.student.name || '').toLowerCase().includes(search)
@@ -3839,6 +3845,36 @@ function rebuildAllTableHeaders() {
         headersHtml += `<th>INTERNSHIPS</th>`;
       }
       headersHtml += `</tr>`;
+      thead.innerHTML = headersHtml;
+    }
+  }
+
+  // 4. Rebuild Admin Users table headers
+  const adminUsersTable = document.getElementById('admin-users-tbody')?.closest('table');
+  if (adminUsersTable) {
+    const thead = adminUsersTable.querySelector('thead');
+    if (thead) {
+      let headersHtml = `
+        <tr>
+          <th>Roll</th>
+          <th>Name</th>
+          <th>Branch</th>
+          <th>Batch</th>
+          <th>Score</th>
+          <th>LeetCode</th>
+          <th>HackerRank</th>
+          <th>Codeforces</th>
+          <th>GFG</th>
+          <th>CodeChef</th>
+          <th>GitHub</th>
+      `;
+      titles.forEach(t => {
+        headersHtml += `<th>${escapeHtml(t.title.toUpperCase())}</th>`;
+      });
+      if (titles.length === 0) {
+        headersHtml += `<th>INTERNSHIPS</th>`;
+      }
+      headersHtml += `<th>Actions</th></tr>`;
       thead.innerHTML = headersHtml;
     }
   }
