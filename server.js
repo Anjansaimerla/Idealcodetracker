@@ -76,7 +76,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
 // Helper: Timeout-based fetch
-const fetchWithTimeout = (url, options = {}, timeout = 3000) => {
+const fetchWithTimeout = (url, options = {}, timeout = 15000) => {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       reject(new Error('Request timed out'));
@@ -249,7 +249,7 @@ async function getGithubStats(username) {
   try {
     const res = await fetchWithTimeout(`https://api.github.com/users/${username}`, {
       headers: { 'User-Agent': 'ideal-code-tracker' }
-    });
+    }, 15000);
     if (res.ok) {
       const data = await res.json();
       const repos = data.public_repos || 0;
@@ -267,7 +267,7 @@ async function getGithubStats(username) {
   try {
     const res = await fetchWithTimeout(`https://github.com/${username}`, {
       headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
-    });
+    }, 15000);
     if (!res.ok) throw new Error(`HTML response status: ${res.status}`);
     const html = await res.text();
 
