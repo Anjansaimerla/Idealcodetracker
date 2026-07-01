@@ -1054,6 +1054,42 @@ app.put('/api/internships/admin/submission', async (req, res) => {
   }
 });
 
+// Temporary debug endpoint to test GitHub scraper results and fetch status
+app.get('/api/test-github/:username', async (req, res) => {
+  const { username } = req.params;
+  const result = { api: {}, html: {} };
+  try {
+    const apiRes = await fetchWithTimeout(`https://api.github.com/users/${username}`, {
+      headers: { 'User-Agent': 'ideal-code-tracker' }
+    });
+    result.api.status = apiRes.status;
+    result.api.ok = apiRes.ok;
+    if (apiRes.ok) {
+      result.api.data = await apiRes.json();
+    }
+  } catch (err) {
+    result.api.error = err.message;
+  }
+  try {
+    const htmlRes = await fetchWithTimeout(`https://github.com/${username}`, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+    });
+    result.html.status = htmlRes.status;
+    result.html.ok = htmlRes.ok;
+    if (htmlRes.ok) {
+      const html = await htmlRes.text();
+      const repoMatch = html.match(/href="[^"]+\?tab=repositories"[^>]*>[\s\S]*?class="Counter"[^>]*>([^<]+)/i);
+      const followersMatch = html.match(/class="text-bold color-fg-default">([^<]+)<\/span>\s*followers/i);
+      result.html.repoMatch = repoMatch;
+      result.html.followersMatch = followersMatch;
+      result.html.htmlLength = html.length;
+    }
+  } catch (err) {
+    result.html.error = err.message;
+  }
+  res.json(result);
+});
+
 // Serve frontend for any other routes
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
@@ -1151,42 +1187,6 @@ function startDailyScrapingScheduler() {
     setInterval(runScheduledSync, 24 * 60 * 60 * 1000);
   }, delay);
 }
-
-// Temporary debug endpoint to test GitHub scraper results and fetch status
-app.get('/api/test-github/:username', async (req, res) => {
-  const { username } = req.params;
-  const result = { api: {}, html: {} };
-  try {
-    const apiRes = await fetchWithTimeout(`https://api.github.com/users/${username}`, {
-      headers: { 'User-Agent': 'ideal-code-tracker' }
-    });
-    result.api.status = apiRes.status;
-    result.api.ok = apiRes.ok;
-    if (apiRes.ok) {
-      result.api.data = await apiRes.json();
-    }
-  } catch (err) {
-    result.api.error = err.message;
-  }
-  try {
-    const htmlRes = await fetchWithTimeout(`https://github.com/${username}`, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
-    });
-    result.html.status = htmlRes.status;
-    result.html.ok = htmlRes.ok;
-    if (htmlRes.ok) {
-      const html = await htmlRes.text();
-      const repoMatch = html.match(/href="[^"]+\?tab=repositories"[^>]*>[\s\S]*?class="Counter"[^>]*>([^<]+)/i);
-      const followersMatch = html.match(/class="text-bold color-fg-default">([^<]+)<\/span>\s*followers/i);
-      result.html.repoMatch = repoMatch;
-      result.html.followersMatch = followersMatch;
-      result.html.htmlLength = html.length;
-    }
-  } catch (err) {
-    result.html.error = err.message;
-  }
-  res.json(result);
-});
 
 // Initialize database and start server
 async function startServer() {
