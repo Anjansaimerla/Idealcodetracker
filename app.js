@@ -1431,7 +1431,7 @@ function handleCSVDownload() {
   // Construct CSV Header
   const titles = internshipTitlesDb;
   let titleHeaders = titles.map(t => `"${t.title.toUpperCase()}"`).join(',');
-  let csvContent = `Rank,Roll Number,Name,Branch,Gmail,Total Score,LeetCode Solved,HackerRank Score,Codeforces Rating,GeeksforGeeks Solved,CodeChef Solved,GitHub Repos,${titleHeaders}\n`;
+  let csvContent = `Rank,Roll Number,Name,Branch,Batch,Gmail,Total Score,LeetCode Solved,HackerRank Score,Codeforces Rating,GeeksforGeeks Solved,CodeChef Solved,GitHub Repos,${titleHeaders}\n`;
   
   // Cache submissions
   const submissionsSource = studentSubmissionsDb;
@@ -1460,7 +1460,7 @@ function handleCSVDownload() {
     });
 
     let rowValues = titleValues.map(v => `"${v}"`).join(',');
-    csvContent += `${s.globalRank},"${s.roll}","${s.name}","${s.branch}","${s.email}",${s.totalScore},${s.stats.leetcode || 0},${s.stats.hackerrank || 0},${s.stats.codeforces || 0},${s.stats.gfg || 0},${s.stats.codechef || 0},${s.stats.github || 0},${rowValues}\n`;
+    csvContent += `${s.globalRank},"${s.roll}","${s.name}","${s.branch}",${s.batchYear || s.batch_year || 2026},"${s.email}",${s.totalScore},${s.stats.leetcode || 0},${s.stats.hackerrank || 0},${s.stats.codeforces || 0},${s.stats.gfg || 0},${s.stats.codechef || 0},${s.stats.github || 0},${rowValues}\n`;
   });
 
   // Create downloadable blob
