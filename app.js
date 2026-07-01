@@ -2687,6 +2687,27 @@ function setupAdminEventListeners() {
   });
   document.getElementById('btn-admin-refresh-pending').addEventListener('click', () => triggerManualRefresh('pending'));
   document.getElementById('btn-admin-refresh-all-users').addEventListener('click', () => triggerManualRefresh('all'));
+  document.getElementById('btn-admin-fix-batches').addEventListener('click', async () => {
+    if (!confirm('Are you sure you want to automatically align/restore all student batch years based on their roll number prefixes?')) return;
+    try {
+      const res = await fetch('/api/admin/fix-all-batches', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        alert(data.message);
+        await fetchStudents();
+        renderAdminUsers();
+      } else {
+        const errData = await res.json();
+        alert(errData.error || 'Failed to align batches.');
+      }
+    } catch (err) {
+      console.error('Error auto-aligning batches:', err);
+      alert('An error occurred. Please try again.');
+    }
+  });
 
   // Analytics tab
   document.getElementById('btn-analytics-csv').addEventListener('click', handleCSVDownload);
