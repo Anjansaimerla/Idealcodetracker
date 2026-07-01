@@ -1073,6 +1073,17 @@ app.put('/api/internships/admin/submission', async (req, res) => {
   }
 });
 
+// Endpoint to automatically fix/restore all student batch years based on their roll prefixes
+app.post('/api/admin/fix-all-batches', async (req, res) => {
+  try {
+    const count = await db.fixAllStudentBatches(determineBatchYear);
+    res.json({ message: `Successfully restored correct roll-derived batch years for ${count} students.`, status: 'success' });
+  } catch (err) {
+    console.error('Fix all batches error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Temporary debug endpoint to test GitHub scraper results and fetch status
 app.get('/api/test-github/:username', async (req, res) => {
   const { username } = req.params;

@@ -1127,6 +1127,31 @@ const db = {
 
   adminUpdateStudentSubmission: async (studentRoll, titleId, itemIds) => {
     return db.submitStudentInternships(studentRoll, titleId, itemIds, true);
+  },
+
+  fixAllStudentBatches: async (determinerFn) => {
+    if (isFallbackMode) {
+      const data = readFallbackData();
+      let count = 0;
+      data.student_profiles.forEach(p => {
+        const correct = determinerFn(p.roll);
+        if (p.batch_year !== correct) {
+          p.batch_year = correct;
+          count++;
+        }
+      });
+      writeFallbackData(data);
+      return count;
+    } else {
+      const [rows] = await pool.query('SELECT roll FROM student_profiles');
+      let count = 0;
+      for (const row of rows) {
+        const correct = determinerFn(row.roll);
+        await pool.query('UPDATE student_profiles SET batch_year = ? WHERE roll = ?', [correct, row.roll]);
+        count++;
+      }
+      return count;
+    }
   }
 };
 
