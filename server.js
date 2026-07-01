@@ -96,6 +96,23 @@ const fetchWithTimeout = (url, options = {}, timeout = 15000) => {
   });
 };
 
+// Helper: Determine graduation batch year based on roll number patterns
+function determineBatchYear(roll) {
+  if (!roll) return 2026;
+  const cleanRoll = roll.trim().toUpperCase();
+  const match = cleanRoll.match(/^(\d{2})/);
+  if (match) {
+    const entryYear = parseInt(match[1]);
+    if (entryYear >= 10 && entryYear <= 99) {
+      // Check for lateral entry: typically 5th and 6th characters are '5A'
+      // e.g. 23XX5A0501 -> admitted in 2023, lateral, graduates in 2026 (23 + 3)
+      const isLateral = cleanRoll.length >= 6 && cleanRoll.substring(4, 6) === '5A';
+      return 2000 + entryYear + (isLateral ? 3 : 4);
+    }
+  }
+  return 2026; // Default fallback
+}
+
 // Helper: Extract username from profile URL
 function extractUsername(url, platform) {
   if (!url) return null;
@@ -447,7 +464,7 @@ app.post('/api/auth/register', async (req, res) => {
 
     const profileObj = {
       email,
-      batch_year: parseInt(batchYear || 2026),
+      batch_year: determineBatchYear(roll),
       leetcode_url: leetcode || null,
       hackerrank_url: hackerrank || null,
       codeforces_url: codeforces || null,
@@ -513,7 +530,7 @@ app.put('/api/students/:roll', async (req, res) => {
       gfg_url: gfg || null,
       codechef_url: codechef || null,
       github_url: github || null,
-      batch_year: batchYear ? parseInt(batchYear) : undefined,
+      batch_year: determineBatchYear(roll),
       ...stats
     };
 
@@ -853,6 +870,7 @@ app.post('/api/admin/refresh', async (req, res) => {
               gfg_url: student.gfg || null,
               codechef_url: student.codechef || null,
               github_url: student.github || null,
+              batch_year: student.batchYear,
               ...stats
             };
             await db.updateStudentProfile(student.roll, profileObj);
@@ -884,6 +902,7 @@ app.post('/api/admin/refresh', async (req, res) => {
           gfg_url: student.gfg || null,
           codechef_url: student.codechef || null,
           github_url: student.github || null,
+          batch_year: student.batchYear,
           ...stats
         };
         await db.updateStudentProfile(student.roll, profileObj);
@@ -1122,6 +1141,7 @@ async function runScheduledSync() {
           gfg_url: student.gfg || null,
           codechef_url: student.codechef || null,
           github_url: student.github || null,
+          batch_year: student.batchYear,
           ...stats
         };
         await db.updateStudentProfile(student.roll, profileObj);
