@@ -1660,7 +1660,15 @@ function renderAdminUsers() {
       <td><strong>${s.roll}</strong></td>
       <td>${s.name}</td>
       <td><span class="role-indicator role-student" style="font-size: 0.7rem;">${s.branch}</span></td>
-      <td>${s.batchYear || 2026}</td>
+      <td>
+        <select class="admin-inline-batch-select filter-select" style="font-size:0.78rem;padding:0.15rem 0.35rem;width:80px;height:auto;margin:0;border:1px solid rgba(255,255,255,0.15);background:var(--bg-card);border-radius:4px;color:var(--text-primary);">
+          <option value="2026" ${s.batchYear == 2026 ? 'selected' : ''}>2026</option>
+          <option value="2027" ${s.batchYear == 2027 ? 'selected' : ''}>2027</option>
+          <option value="2028" ${s.batchYear == 2028 ? 'selected' : ''}>2028</option>
+          <option value="2029" ${s.batchYear == 2029 ? 'selected' : ''}>2029</option>
+          <option value="2030" ${s.batchYear == 2030 ? 'selected' : ''}>2030</option>
+        </select>
+      </td>
       <td style="font-weight: 700; color: var(--warning);">${s.totalScore}</td>
       <td>${s.stats.leetcode || 0}</td>
       <td>${s.stats.hackerrank || 0}</td>
@@ -1679,6 +1687,37 @@ function renderAdminUsers() {
     row.querySelector('.btn-see').addEventListener('click', () => showStudentDetailModal(s.roll));
     row.querySelector('.btn-edit').addEventListener('click', () => openAdminEditModal(s));
     row.querySelector('.btn-delete').addEventListener('click', () => triggerAdminDeleteStudent(s.roll));
+
+    row.querySelector('.admin-inline-batch-select').addEventListener('change', async (e) => {
+      const newBatch = parseInt(e.target.value);
+      try {
+        const res = await fetch(`/api/admin/students/${s.roll}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: s.name,
+            email: s.email || `${s.roll.toLowerCase()}@gmail.com`,
+            branch: s.branch,
+            batchYear: newBatch,
+            adminUser: currentUser.username
+          })
+        });
+        if (res.ok) {
+          s.batchYear = newBatch; // Update locally
+          console.log(`Updated batch for ${s.roll} to ${newBatch}`);
+          await fetchStudents();
+          renderAdminUsers();
+        } else {
+          const errData = await res.json();
+          alert(errData.error || 'Failed to update batch.');
+          e.target.value = s.batchYear.toString();
+        }
+      } catch (err) {
+        console.error('Error updating batch inline:', err);
+        alert('An error occurred while updating batch.');
+        e.target.value = s.batchYear.toString();
+      }
+    });
 
     tbody.appendChild(row);
   });
