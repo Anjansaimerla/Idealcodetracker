@@ -245,17 +245,55 @@ async function getCodeChefStats(username) {
 }
 
 async function getGithubStats(username) {
-  const res = await fetchWithTimeout(`https://api.github.com/users/${username}`, {
-    headers: { 'User-Agent': 'ideal-code-tracker' }
-  });
-  if (!res.ok) throw new Error('GitHub unavailable');
-  const data = await res.json();
-  const repos = data.public_repos || 0;
-  const followers = data.followers || 0;
-  return {
-    repos,
-    rank: `Followers: ${followers}`
-  };
+  // Try GitHub API first
+  try {
+    const res = await fetchWithTimeout(`https://api.github.com/users/${username}`, {
+      headers: { 'User-Agent': 'ideal-code-tracker' }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const repos = data.public_repos || 0;
+      const followers = data.followers || 0;
+      return {
+        repos,
+        rank: `Followers: ${followers}`
+      };
+    }
+  } catch (err) {
+    console.warn(`[Live Crawler] GitHub API failed for ${username}: ${err.message}. Trying HTML scraping fallback...`);
+  }
+
+  // Fallback to HTML Scraping
+  try {
+    const res = await fetchWithTimeout(`https://github.com/${username}`, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+    });
+    if (!res.ok) throw new Error(`HTML response status: ${res.status}`);
+    const html = await res.text();
+
+    const repoMatch = html.match(/href="[^"]+\?tab=repositories"[^>]*>[\s\S]*?class="Counter"[^>]*>([^<]+)/i);
+    const repos = repoMatch ? parseInt(repoMatch[1].trim()) : 0;
+
+    const followersMatch = html.match(/class="text-bold color-fg-default">([^<]+)<\/span>\s*followers/i);
+    const followersStr = followersMatch ? followersMatch[1].trim() : '0';
+
+    let followers = 0;
+    if (followersStr.toLowerCase().endsWith('k')) {
+      followers = Math.round(parseFloat(followersStr) * 1000);
+    } else if (followersStr.toLowerCase().endsWith('m')) {
+      followers = Math.round(parseFloat(followersStr) * 1000000);
+    } else {
+      followers = parseInt(followersStr) || 0;
+    }
+
+    return {
+      repos,
+      rank: `Followers: ${followers}`
+    };
+  } catch (err) {
+    console.error(`[Live Crawler] GitHub HTML scraping also failed for ${username}:`, err.message);
+    throw new Error('GitHub service unavailable');
+  }
 }
 
 // Controller: Fetch live coding statistics
